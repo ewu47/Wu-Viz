@@ -17,6 +17,9 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 
+// Import the image
+import mapZoneImage from '/map-zone.png';
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -908,14 +911,15 @@ const DivvyProject: React.FC = () => {
         </p>
         <div className="centered-image responsive-image">
           <img
-            src="/map zone.png"
+            src={mapZoneImage}
             alt="Divvy bikes zone map"
             className="map-image"
           />
           <p>
             Since the raw data contained slight variations in latitude and longitude coordinates for the same station locations, 
-            I cleaned and standardized the data by averaging these coordinates to create 20 distinct station locations. Using this, I updated my tables and then 
-            started analyzing the some quick stats and cool trends.</p>
+            I cleaned and standardized the data by averaging these coordinates to create 20 distinct lat/lng for station locations. 
+            Using this, I updated the large divvy data tables and then 
+            started analyzing the quick stats and cool trends.</p>
 
           <p>I didn't want to be super intricate with all of the dates, 
             so I kept the data between October 2024 and May 2025.</p>
@@ -998,7 +1002,7 @@ const DivvyProject: React.FC = () => {
                       ? Number(Object.values(analytics.trips_not_at_stations[0])[1]).toLocaleString()
                       : 'N/A'}
                   </span>
-                  <span className="stat-label">Trips not at a station</span>
+                  <span className="stat-label">Trips started not at a station</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-number">
@@ -1241,7 +1245,6 @@ const DivvyProject: React.FC = () => {
             Weather does seem to play a huge role in the amount of trips taken as we can see the numbers decreasing during the winter quarter, 
             and gradually increasing for the spring quarter. Maybe I should look more into the weather averages with this data. 
             I was a little suprised how May didn't have higher numbers considering the weather was quite nice.
-            What is intersting though is that although May had fewer total trips than October, it actually had higher e-bike usage.
           </p>
           <br/>
           <p>
@@ -1254,7 +1257,30 @@ const DivvyProject: React.FC = () => {
             while members use the bikes for efficient, short-distance transportation 
             between familiar locations like dorms, classes, and dining halls.
           </p>
+          <br/>
+          <p>
+            <strong> E-bike or classics?</strong><br/>
+              E-bikes are really popular around the area especially with its convenience of not being able to park at a station. 
+              I couldn't get the exact coordinates of those that parked outside of the station, because the data didn't seem right (a majority of the end-station lat/lng were the same numbers...).
+              What's fascinating is the seasonal shift in e-bike preference. While October had the highest amount of trips, May actually 
+              had the highest amount of e-bike trips with around 9,000 trips. From a cost persepctive, e-bikes do cost more per ride,
+              but as winter/spring quarter went by, the usage of e-bikes was almost consistently the same as the classic bikes.
+              I wonder what caused this shift. Is it the weather? Are people more in a rush? Did people finally realize the thrill of an e-bike?
+              I'm excited for next school year's Divvy stats to see if this trend continues.
+
+
+          </p>
         </div>
+        <p>
+        <br/>
+          <u>I hope you enjoyed the stats and visuals!</u>
+          <br/>
+          If you have any questions or comments, feel free to reach out to me at
+          <a href="mailto:emwu@uchicago.edu"> {''}
+             emwu@uchicago.edu
+          </a>
+        </p>
+
       </section>
     </main>
   );

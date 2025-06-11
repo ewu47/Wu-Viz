@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './App.css'
 import './styles/responsive.css';
 import Banner from './components/Banner'
@@ -6,35 +6,33 @@ import About from './components/About'
 import Projects from './components/Projects'
 import DivvyProject from './components/DivvyProject'
 
-function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'divvy'>('home');
-  const [isAnimating, setIsAnimating] = useState(false);
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPage = location.pathname === '/divvy' ? 'divvy' : 'home';
 
   const handleProjectClick = () => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      setCurrentPage('divvy');
-      setIsAnimating(false);
-    }, 600);
+    navigate('/divvy');
   };
 
   const handleBackToHome = () => {
-    setCurrentPage('home');
+    navigate('/');
   };
 
   return (
     <div className="App">
       <div className="main-content responsive-container">
-        <div className={`app ${isAnimating ? 'animating' : ''}`}>
-          <Banner isAnimating={isAnimating} currentPage={currentPage} onBackToHome={handleBackToHome} />
-          {currentPage === 'home' ? (
-            <>
-              <About />
-              <Projects onProjectClick={handleProjectClick} />
-            </>
-          ) : (
-            <DivvyProject />
-          )}
+        <div className="app">
+          <Banner currentPage={currentPage} onBackToHome={handleBackToHome} />
+          <Routes>
+            <Route path="/" element={
+              <>
+                <About />
+                <Projects onProjectClick={handleProjectClick} />
+              </>
+            } />
+            <Route path="/divvy" element={<DivvyProject />} />
+          </Routes>
         </div>
       </div>
       
@@ -85,7 +83,15 @@ function App() {
         </button>
       </footer>
     </div>
-  )
+  );
+}
+
+function App() {
+  return (
+    <Router basename="/Wu-Viz">
+      <AppContent />
+    </Router>
+  );
 }
 
 export default App

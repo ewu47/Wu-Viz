@@ -6,7 +6,5 @@ export default defineConfig({
   base: '/Wu-Viz/',
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
-    chunkSizeWarningLimit: 1600  // Suppress the chunk size warning
   }
 })

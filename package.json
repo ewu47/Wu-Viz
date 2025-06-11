@@ -5,7 +5,7 @@
   "type": "module",
   "homepage": "https://ewu47.github.io/Wu-Viz",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run generate-data && vite",
     "dev:with-data": "npm run generate-data && vite",
     "build": "npm run generate-data && tsc && vite build",
     "build:static-only": "tsc && vite build",

@@ -21,8 +21,10 @@ build/
 config/database.json
 secrets/
 
+# Since we're using static data now, commit the analytics.json file
+# public/analytics.json
+
 # Generated analytics data (optional - comment out if you want to commit it)
-public/analytics.json
 
 # IDE and editor files
 .vscode/

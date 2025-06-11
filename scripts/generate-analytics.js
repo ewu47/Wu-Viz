@@ -71,7 +71,6 @@ async function generateAnalytics() {
         trips_not_at_stations: queries[15].rows,
         total_distance: queries[16].rows,
         total_time: queries[17].rows,
-        long_uchicago_trips: queries[18].rows,
         start_stations_after_9pm: queries[19].rows,
         end_stations_after_9pm: queries[20].rows,
         member_casual_user_count: queries[21].rows,

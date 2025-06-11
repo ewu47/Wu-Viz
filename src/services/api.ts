@@ -152,7 +152,7 @@ export const divvyApi = {
   async getAnalytics(): Promise<ApiResponse<Analytics>> {
     try {
       // Always use static JSON file
-      const response = await fetch('/analytics.json');
+      const response = await fetch('/Wu-Viz/analytics.json');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

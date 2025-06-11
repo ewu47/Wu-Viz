@@ -1,9 +1,9 @@
 {
-  "name": "stats-journal",
+  "name": "Wu Viz",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://edwardwu.github.io/Wu-Viz",
+  "homepage": "https://ewu47.github.io/Wu-Viz",
   "scripts": {
     "dev": "vite",
     "dev:with-data": "npm run generate-data && vite",

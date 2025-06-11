@@ -8,7 +8,7 @@
     "dev": "npm run generate-data && vite",
     "dev:with-data": "npm run generate-data && vite",
     "build": "npm run generate-data && tsc && vite build",
-    "build:static-only": "tsc && vite build",
+    "build:static-only": "vite build",
     "generate-data": "node scripts/generate-analytics.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

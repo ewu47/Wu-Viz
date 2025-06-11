@@ -12,7 +12,7 @@
     "generate-data": "node scripts/generate-analytics.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "predeploy": "npm run build",
+    "predeploy": "npm run build:static-only",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {

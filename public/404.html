@@ -4,6 +4,19 @@
   <meta charset="utf-8">
   <title>Wu Viz</title>
   <script>
+    // Extract the route from the current path
+    var path = window.location.pathname;
+    var basePath = '/Wu-Viz';
+    
+    // Get the route after /Wu-Viz
+    var route = path.startsWith(basePath) ? path.substring(basePath.length) : path;
+    
+    // Store the route for the main app to handle
+    if (route && route !== '/') {
+      sessionStorage.setItem('redirect', route + window.location.search + window.location.hash);
+    }
+    
+    // Redirect to base URL so the main app can handle routing
     window.location.replace('/Wu-Viz/');
   </script>
 </head>

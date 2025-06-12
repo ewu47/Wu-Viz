@@ -13,6 +13,15 @@ function AppContent() {
   const currentPage = location.pathname === '/divvy' ? 'divvy' : 'home';
 
   useEffect(() => {
+    // Check for stored redirect from 404 page
+    const storedRedirect = sessionStorage.getItem('redirect');
+    if (storedRedirect) {
+      sessionStorage.removeItem('redirect');
+      navigate(storedRedirect);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     if (currentPage === 'divvy') {
       document.title = 'UChicago Divvy Stats 2024-2025';
     } else {

@@ -6,12 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Wu Viz</title>
     <script>
-      // GitHub Pages routing hack
+      // Handle GitHub Pages SPA routing
       (function() {
-        const redirectPath = sessionStorage.getItem('redirectPath');
-        if (redirectPath) {
-          sessionStorage.removeItem('redirectPath');
-          history.replaceState(null, null, '/Wu-Viz' + redirectPath);
+        var redirect = sessionStorage.getItem('redirect');
+        if (redirect) {
+          sessionStorage.removeItem('redirect');
+          // Replace the current history state with the intended route
+          history.replaceState(null, null, '/Wu-Viz' + redirect);
         }
       })();
     </script>

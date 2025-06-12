@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import './App.css'
 import './styles/responsive.css';
 import Banner from './components/Banner'
@@ -10,6 +11,15 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPage = location.pathname === '/divvy' ? 'divvy' : 'home';
+
+  // Update document title based on current page
+  useEffect(() => {
+    if (currentPage === 'divvy') {
+      document.title = 'UChicago Divvy Stats 2024-2025';
+    } else {
+      document.title = 'Wu Viz';
+    }
+  }, [currentPage]);
 
   const handleProjectClick = () => {
     navigate('/divvy');
@@ -47,12 +57,20 @@ function AppContent() {
         borderTop: '1px solid rgba(128, 0, 0, 0.1)',
         padding: '8px 20px',
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         alignItems: 'center',
         zIndex: 1000,
         boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
         minHeight: '40px'
       }}>
+        <span style={{
+          fontSize: '12px',
+          color: '#666',
+          fontStyle: 'italic'
+        }}>
+          {currentPage === 'divvy' ? 'Click E.WU to return home' : ''}
+        </span>
+        
         <button
           onClick={handleBackToHome}
           style={{
@@ -78,9 +96,12 @@ function AppContent() {
             target.style.backgroundColor = 'transparent';
             target.style.transform = 'scale(1)';
           }}
+          title="Return to home page"
         >
           E.WU
         </button>
+        
+        <div style={{ width: '120px' }}></div> {/* Spacer to keep E.WU centered */}
       </footer>
     </div>
   );

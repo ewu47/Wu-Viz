@@ -664,58 +664,6 @@ const DivvyProject: React.FC = () => {
     };
   };
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-        labels: {
-          padding: window.innerWidth < 768 ? 12 : 24,
-          font: {
-            size: window.innerWidth < 768 ? 12 : 14,
-            weight: '500',
-          },
-        },
-      },
-      title: {
-        display: false,
-      },
-    },
-    scales: {
-      x: {
-        ticks: {
-          maxRotation: 45,
-          minRotation: 45,
-          font: {
-            size: window.innerWidth < 768 ? 10 : 12,
-          },
-        },
-        grid: {
-          display: false,
-        },
-      },
-      y: {
-        ticks: {
-          font: {
-            size: window.innerWidth < 768 ? 11 : 13,
-          },
-        },
-        grid: {
-          color: 'rgba(0,0,0,0.1)',
-        },
-      },
-    },
-    layout: {
-      padding: {
-        top: window.innerWidth < 768 ? 5 : 10,
-        bottom: window.innerWidth < 768 ? 5 : 10,
-        left: window.innerWidth < 768 ? 5 : 10,
-        right: window.innerWidth < 768 ? 5 : 10,
-      },
-    },
-  };
-
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -762,71 +710,6 @@ const DivvyProject: React.FC = () => {
     },
   };
 
-  const commonRoutesOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-        labels: {
-          padding: window.innerWidth < 768 ? 12 : 24,
-          font: {
-            size: window.innerWidth < 768 ? 12 : 14,
-            weight: '500',
-          },
-        },
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          title: function(context: any) {
-            // Show full route name in tooltip title
-            const datasetIndex = context[0].datasetIndex;
-            const dataIndex = context[0].dataIndex;
-            const dataset = context[0].chart.data.datasets[datasetIndex];
-            return dataset.fullRouteNames[dataIndex];
-          },
-          label: function(context: any) {
-            return `Trip Count: ${context.parsed.y}`;
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        ticks: {
-          maxRotation: 45,
-          minRotation: 45,
-          font: {
-            size: window.innerWidth < 768 ? 10 : 12,
-          },
-        },
-        grid: {
-          display: false,
-        },
-      },
-      y: {
-        ticks: {
-          font: {
-            size: window.innerWidth < 768 ? 11 : 13,
-          },
-        },
-        grid: {
-          color: 'rgba(0,0,0,0.1)',
-        },
-      },
-    },
-    layout: {
-      padding: {
-        top: window.innerWidth < 768 ? 5 : 10,
-        bottom: window.innerWidth < 768 ? 5 : 10,
-        left: window.innerWidth < 768 ? 5 : 10,
-        right: window.innerWidth < 768 ? 5 : 10,
-      },
-    },
-  };
 
   return (
     <main className="project-content responsive-container" style={{ paddingBottom: '60px' }}>
@@ -901,9 +784,17 @@ const DivvyProject: React.FC = () => {
       <section className="project-section">
         <h2>Introduction</h2>
         <p>
-          I got curious about where all the divvy bikes went late at night, so I decided to compile
-          some stats for Divvy bikes around the UChicago and Hyde park area...
+          I got curious about where all the Divvy bikes went late at night, so I decided to compile
+          some stats for these bikes around the UChicago and Hyde park area...
         </p>
+        <br/>
+        <p> For those who don't know what Divvy is, it's a public bike-sharing program in Chicago and nearby suburbs.
+          You can rent a bike from one station and return it to another making it a quick and 
+          convenient way to get around the city or commute to nearby areas.
+          It's similar to the Citi Bikes in New York City.
+          Both of these programs are operated by Lyft.
+        </p>
+        <br/>
         <p>
           Before you scroll down for the actual stats, I want to give a quick rundown of where the data has come from. The data
           is open source from the divvy website and I essentially just took the data and filtered it in

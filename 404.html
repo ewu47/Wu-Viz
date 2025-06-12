@@ -4,16 +4,21 @@
   <meta charset="utf-8">
   <title>Wu Viz</title>
   <script>
-    // Store the path relative to the base path
+    // Store the full path after the base path
     var path = window.location.pathname;
     var basePath = '/Wu-Viz';
-    var relativePath = path.startsWith(basePath) ? path.substring(basePath.length) : path;
     
-    sessionStorage.setItem('redirectPath', relativePath + window.location.search + window.location.hash);
-    window.location.replace('/Wu-Viz/');
+    // Extract the route after /Wu-Viz
+    var route = path.startsWith(basePath) ? path.substring(basePath.length) : path;
+    
+    // If there's no route or it's just '/', don't store anything
+    if (route && route !== '/') {
+      sessionStorage.setItem('redirect', route + window.location.search + window.location.hash);
+    }
+    
   </script>
 </head>
 <body>
-  <div>Redirecting...</div>
+  <div>Redirecting to Wu Viz...</div>
 </body>
 </html>

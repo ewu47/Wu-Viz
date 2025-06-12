@@ -12,7 +12,6 @@ function AppContent() {
   const location = useLocation();
   const currentPage = location.pathname === '/divvy' ? 'divvy' : 'home';
 
-  // Update document title based on current page
   useEffect(() => {
     if (currentPage === 'divvy') {
       document.title = 'UChicago Divvy Stats 2024-2025';
@@ -101,7 +100,7 @@ function AppContent() {
           E.WU
         </button>
         
-        <div style={{ width: '120px' }}></div> {/* Spacer to keep E.WU centered */}
+        <div style={{ width: '120px' }}></div> 
       </footer>
     </div>
   );

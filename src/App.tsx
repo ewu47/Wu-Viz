@@ -13,6 +13,31 @@ function AppContent() {
   const currentPage = location.pathname === '/divvy' ? 'divvy' : 'home';
 
   useEffect(() => {
+    // Add cache-busting meta tags
+    const addCacheBustingMeta = () => {
+      // Remove existing cache-busting meta tags
+      const existingMetas = document.querySelectorAll('meta[http-equiv="Cache-Control"], meta[http-equiv="Pragma"], meta[http-equiv="Expires"]');
+      existingMetas.forEach(meta => meta.remove());
+      
+      // Add new cache-busting meta tags
+      const cacheControlMeta = document.createElement('meta');
+      cacheControlMeta.setAttribute('http-equiv', 'Cache-Control');
+      cacheControlMeta.setAttribute('content', 'no-cache, no-store, must-revalidate');
+      document.head.appendChild(cacheControlMeta);
+      
+      const pragmaMeta = document.createElement('meta');
+      pragmaMeta.setAttribute('http-equiv', 'Pragma');
+      pragmaMeta.setAttribute('content', 'no-cache');
+      document.head.appendChild(pragmaMeta);
+      
+      const expiresMeta = document.createElement('meta');
+      expiresMeta.setAttribute('http-equiv', 'Expires');
+      expiresMeta.setAttribute('content', '0');
+      document.head.appendChild(expiresMeta);
+    };
+    
+    addCacheBustingMeta();
+    
     // Check for stored redirect from 404 page
     const storedRedirect = sessionStorage.getItem('redirect');
     if (storedRedirect) {

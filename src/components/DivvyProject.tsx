@@ -45,6 +45,25 @@ const DivvyProject: React.FC = () => {
   const [hourlyView, setHourlyView] = useState<'by_period' | 'by_hour'>('by_period');
   const [monthlyView, setMonthlyView] = useState<'total_trips' | 'user_distribution' | 'bike_types' | 'avg_duration'>('total_trips');
 
+  // Add window size state
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
+
+  // Add resize listener
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -75,12 +94,14 @@ const DivvyProject: React.FC = () => {
     if (!analytics?.top_start_stations) return null;
 
     const stations = analytics.top_start_stations;
-    const barThickness = stations.length > 20 ? 15 : stations.length > 10 ? 25 : 35;
+    const barThickness = windowSize.width < 768 ? 8 : stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
 
     return {
       labels: stations.map((station: any) => {
         const name = Object.values(station)[0] as string;
-        return name.length > 30 ? name.substring(0, 30) + '...' : name;
+        // Much shorter labels to prevent cutoff
+        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
+        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
       }),
       datasets: [
         {
@@ -90,7 +111,7 @@ const DivvyProject: React.FC = () => {
           borderColor: 'rgba(128, 0, 0, 1)',
           borderWidth: 1,
           barThickness: barThickness,
-          maxBarThickness: 40,
+          maxBarThickness: windowSize.width < 768 ? 20 : 35,
         },
       ],
     };
@@ -100,12 +121,13 @@ const DivvyProject: React.FC = () => {
     if (!analytics?.top_end_stations) return null;
 
     const stations = analytics.top_end_stations;
-    const barThickness = stations.length > 20 ? 15 : stations.length > 10 ? 25 : 35;
+    const barThickness = stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
 
     return {
       labels: stations.map((station: any) => {
         const name = Object.values(station)[0] as string;
-        return name.length > 30 ? name.substring(0, 30) + '...' : name;
+        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
+        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
       }),
       datasets: [
         {
@@ -115,11 +137,12 @@ const DivvyProject: React.FC = () => {
           borderColor: 'rgba(128, 0, 0, 1)',
           borderWidth: 1,
           barThickness: barThickness,
-          maxBarThickness: 40,
+          maxBarThickness: 35,
         },
       ],
     };
   };
+
   const getHourlyTripsData = () => {
     if (!analytics?.trips_by_hour) return null;
 
@@ -163,10 +186,15 @@ const DivvyProject: React.FC = () => {
 
     const months = ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'];
     const data = analytics.monthly_stats;
-    const barThickness = data.length > 8 ? 20 : 30;
+    // Responsive bar thickness
+    const barThickness = windowSize.width < 768 ? 15 : data.length > 8 ? 20 : 30;
 
     return {
-      labels: data.map((_: any, index: number) => months[index] || `Month ${index + 1}`),
+      labels: data.map((_: any, index: number) => {
+        const fullMonth = months[index] || `Month ${index + 1}`;
+        // Shorter month names on mobile
+        return windowSize.width < 768 ? fullMonth.substring(0, 3) : fullMonth;
+      }),
       datasets: [
         {
           label: 'Monthly Trips',
@@ -175,7 +203,7 @@ const DivvyProject: React.FC = () => {
           borderColor: 'rgba(128, 0, 0, 1)',
           borderWidth: 1,
           barThickness: barThickness,
-          maxBarThickness: 35,
+          maxBarThickness: windowSize.width < 768 ? 25 : 35,
         },
       ],
     };
@@ -257,13 +285,14 @@ const DivvyProject: React.FC = () => {
     if (!analytics?.common_routes) return null;
 
     const routes = analytics.common_routes;
-    const barThickness = routes.length > 20 ? 12 : routes.length > 10 ? 20 : 30;
+    const barThickness = routes.length > 20 ? 8 : routes.length > 10 ? 15 : 25;
 
     return {
       labels: routes.map((route: any) => {
         const values = Object.values(route);
         const routeName = `${values[0]} → ${values[3]}`;
-        return routeName.length > 35 ? routeName.substring(0, 35) + '...' : routeName;
+        const maxLength = windowSize.width < 480 ? 15 : windowSize.width < 768 ? 20 : 30;
+        return routeName.length > maxLength ? routeName.substring(0, maxLength) + '...' : routeName;
       }),
       datasets: [
         {
@@ -273,7 +302,7 @@ const DivvyProject: React.FC = () => {
           borderColor: 'rgba(165, 42, 42, 1)',
           borderWidth: 1,
           barThickness: barThickness,
-          maxBarThickness: 35,
+          maxBarThickness: 30,
           // Store full route names for tooltip
           fullRouteNames: routes.map((route: any) => {
             const values = Object.values(route);
@@ -316,12 +345,13 @@ const DivvyProject: React.FC = () => {
     if (!analytics?.start_stations_after_9pm) return null;
 
     const stations = analytics.start_stations_after_9pm;
-    const barThickness = stations.length > 20 ? 15 : stations.length > 10 ? 25 : 35;
+    const barThickness = stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
 
     return {
       labels: stations.map((station: any) => {
         const name = Object.values(station)[0] as string;
-        return name.length > 30 ? name.substring(0, 30) + '...' : name;
+        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
+        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
       }),
       datasets: [
         {
@@ -331,7 +361,7 @@ const DivvyProject: React.FC = () => {
           borderColor: 'rgba(165, 42, 42, 1)',
           borderWidth: 1,
           barThickness: barThickness,
-          maxBarThickness: 35,
+          maxBarThickness: 30,
         },
       ],
     };
@@ -341,12 +371,13 @@ const DivvyProject: React.FC = () => {
     if (!analytics?.end_stations_after_9pm) return null;
 
     const stations = analytics.end_stations_after_9pm;
-    const barThickness = stations.length > 20 ? 15 : stations.length > 10 ? 25 : 35;
+    const barThickness = stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
 
     return {
       labels: stations.map((station: any) => {
         const name = Object.values(station)[0] as string;
-        return name.length > 30 ? name.substring(0, 30) + '...' : name;
+        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
+        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
       }),
       datasets: [
         {
@@ -356,7 +387,7 @@ const DivvyProject: React.FC = () => {
           borderColor: 'rgba(165, 42, 42, 1)',
           borderWidth: 1,
           barThickness: barThickness,
-          maxBarThickness: 35,
+          maxBarThickness: 30,
         },
       ],
     };
@@ -664,52 +695,174 @@ const DivvyProject: React.FC = () => {
     };
   };
 
-  const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: {
-          font: {
-            size: window.innerWidth < 768 ? 12 : 14,
+  const getResponsiveBarOptions = () => {
+    const isMobile = windowSize.width < 768;
+    const isTablet = windowSize.width < 1024;
+    
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 100,
+      plugins: {
+        legend: {
+          position: 'top' as const,
+          labels: {
+            font: {
+              size: isMobile ? 11 : isTablet ? 13 : 15,
+            },
+            boxWidth: isMobile ? 10 : 14,
+            padding: isMobile ? 6 : 10,
+          },
+        },
+        tooltip: {
+          titleFont: {
+            size: isMobile ? 12 : 14,
+          },
+          bodyFont: {
+            size: isMobile ? 10 : 12,
           },
         },
       },
-    },
+      scales: {
+        x: {
+          ticks: {
+            font: {
+              size: isMobile ? 8 : isTablet ? 10 : 12,
+            },
+            maxRotation: 90,
+            minRotation: 45,
+          },
+          grid: {
+            display: false,
+          },
+        },
+        y: {
+          ticks: {
+            font: {
+              size: isMobile ? 9 : isTablet ? 11 : 13,
+            },
+          },
+          grid: {
+            display: true,
+          },
+        },
+      },
+      layout: {
+        padding: {
+          left: isMobile ? 5 : 10,
+          right: isMobile ? 5 : 10,
+          top: isMobile ? 5 : 10,
+          bottom: isMobile ? 10 : 15,
+        },
+      },
+    };
   };
 
-  const lineOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-        labels: {
-          font: {
-            size: window.innerWidth < 768 ? 12 : 14,
+  const getResponsiveLineOptions = () => {
+    const isMobile = windowSize.width < 768;
+    const isTablet = windowSize.width < 1024;
+    
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 100,
+      plugins: {
+        legend: {
+          position: 'top' as const,
+          labels: {
+            font: {
+              size: isMobile ? 12 : isTablet ? 14 : 16,
+            },
+            boxWidth: isMobile ? 12 : 16,
+            padding: isMobile ? 8 : 12,
+          },
+        },
+        tooltip: {
+          titleFont: {
+            size: isMobile ? 14 : 16,
+          },
+          bodyFont: {
+            size: isMobile ? 12 : 14,
           },
         },
       },
-    },
-    scales: {
-      x: {
-        ticks: {
-          font: {
-            size: window.innerWidth < 768 ? 10 : 12,
+      scales: {
+        x: {
+          ticks: {
+            font: {
+              size: isMobile ? 10 : isTablet ? 12 : 14,
+            },
+            maxRotation: isMobile ? 45 : 0,
+          },
+          grid: {
+            display: !isMobile,
+          },
+        },
+        y: {
+          ticks: {
+            font: {
+              size: isMobile ? 10 : isTablet ? 12 : 14,
+            },
+          },
+          grid: {
+            display: true,
           },
         },
       },
-      y: {
-        ticks: {
-          font: {
-            size: window.innerWidth < 768 ? 11 : 13,
-          },
+      layout: {
+        padding: {
+          left: isMobile ? 0 : 5,
+          right: isMobile ? 0 : 5,
+          top: isMobile ? 5 : 10,
+          bottom: isMobile ? 5 : 10,
         },
       },
-    },
+    };
   };
 
+  const getResponsiveDoughnutOptions = () => {
+    const isMobile = windowSize.width < 768;
+    const isTablet = windowSize.width < 1024;
+    
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 100,
+      plugins: {
+        legend: {
+          position: isMobile ? 'bottom' : 'right' as const,
+          labels: {
+            font: {
+              size: isMobile ? 12 : isTablet ? 14 : 16,
+            },
+            boxWidth: isMobile ? 12 : 16,
+            padding: isMobile ? 8 : 12,
+            usePointStyle: true,
+          },
+        },
+        tooltip: {
+          titleFont: {
+            size: isMobile ? 14 : 16,
+          },
+          bodyFont: {
+            size: isMobile ? 12 : 14,
+          },
+        },
+      },
+      layout: {
+        padding: {
+          left: isMobile ? 5 : 10,
+          right: isMobile ? 5 : 10,
+          top: isMobile ? 5 : 10,
+          bottom: isMobile ? 10 : 10,
+        },
+      },
+    };
+  };
+
+  // Replace the old static options
+  const doughnutOptions = getResponsiveDoughnutOptions();
+  const lineOptions = getResponsiveLineOptions();
 
   return (
     <main className="project-content responsive-container" style={{ paddingBottom: '60px' }}>
@@ -916,15 +1069,17 @@ const DivvyProject: React.FC = () => {
                     <option value="after_9pm">After 9 PM</option>
                   </select>
                 </div>
-                {startStationsView === 'all_day' ? (
-                  getTopStartStationsChartData() && (
-                    <Bar data={getTopStartStationsChartData()!} />
-                  )
-                ) : (
-                  getStartStationsAfter9pmData() && (
-                    <Bar data={getStartStationsAfter9pmData()!} />
-                  )
-                )}
+                <div>
+                  {startStationsView === 'all_day' ? (
+                    getTopStartStationsChartData() && (
+                      <Bar data={getTopStartStationsChartData()!} options={getResponsiveBarOptions()} />
+                    )
+                  ) : (
+                    getStartStationsAfter9pmData() && (
+                      <Bar data={getStartStationsAfter9pmData()!} options={getResponsiveBarOptions()} />
+                    )
+                  )}
+                </div>
                 <div className="chart-note-style">
                   📍 Regenstein Library, Renee Granville-Grossman Residential Commons, and Ratner are top 3.
                 </div>
@@ -942,15 +1097,17 @@ const DivvyProject: React.FC = () => {
                     <option value="after_9pm">After 9 PM</option>
                   </select>
                 </div>
-                {endStationsView === 'all_day' ? (
-                  getTopEndStationsChartData() && (
-                    <Bar data={getTopEndStationsChartData()!} />
-                  )
-                ) : (
-                  getEndStationsAfter9pmData() && (
-                    <Bar data={getEndStationsAfter9pmData()!} />
-                  )
-                )}
+                <div>
+                  {endStationsView === 'all_day' ? (
+                    getTopEndStationsChartData() && (
+                      <Bar data={getTopEndStationsChartData()!} options={getResponsiveBarOptions()} />
+                    )
+                  ) : (
+                    getEndStationsAfter9pmData() && (
+                      <Bar data={getEndStationsAfter9pmData()!} options={getResponsiveBarOptions()} />
+                    )
+                  )}
+                </div>
                 <div className="chart-note-style">
                   {endStationsView === 'all_day' 
                     ? '📍 Regenstein Library, Renee-Granville-Grossman Residential Commons, and Ratner are top 3.'
@@ -971,16 +1128,18 @@ const DivvyProject: React.FC = () => {
                     <option value="by_hour">By Hour</option>
                   </select>
                 </div>
-                {hourlyView === 'by_period' ? (
-                  <>
-                    <p>
-                    Hours: Overnight [0-5], Morning [6-11], Afternoon [12 - 17], Evening [18-23]
-                    </p>
-                    {getHourlyTripsData() && <Line data={getHourlyTripsData()!} options={lineOptions} />}
-                  </>
-                ) : (
-                  getHourlyTimeData() && <Line data={getHourlyTimeData()!} options={lineOptions} />
-                )}
+                <div>
+                  {hourlyView === 'by_period' ? (
+                    <>
+                      <p style={{ fontSize: windowSize.width < 768 ? '12px' : '14px', marginBottom: '10px' }}>
+                        Hours: Overnight [0-5], Morning [6-11], Afternoon [12 - 17], Evening [18-23]
+                      </p>
+                      {getHourlyTripsData() && <Line data={getHourlyTripsData()!} options={lineOptions} />}
+                    </>
+                  ) : (
+                    getHourlyTimeData() && <Line data={getHourlyTimeData()!} options={lineOptions} />
+                  )}
+                </div>
               </div>
 
               <div className="chart-container">
@@ -997,41 +1156,51 @@ const DivvyProject: React.FC = () => {
                     <option value="avg_duration">Average Duration</option>
                   </select>
                 </div>
-                {monthlyView === 'total_trips' ? (
-                  getMonthlyTripsData() && <Bar data={getMonthlyTripsData()!} />
-                ) : monthlyView === 'user_distribution' ? (
-                  getMemberDistributionData() && <Bar data={getMemberDistributionData()!}/>
-                ) : monthlyView === 'bike_types' ? (
-                  getMonthlyBikeTypesData() && <Bar data={getMonthlyBikeTypesData()!} />
-                ) : (
-                  getMonthAvgDurationData() && <Bar data={getMonthAvgDurationData()!} />
-                )}
+                <div>
+                  {monthlyView === 'total_trips' ? (
+                    getMonthlyTripsData() && <Bar data={getMonthlyTripsData()!} options={getResponsiveBarOptions()} />
+                  ) : monthlyView === 'user_distribution' ? (
+                    getMemberDistributionData() && <Bar data={getMemberDistributionData()!} options={getResponsiveBarOptions()} />
+                  ) : monthlyView === 'bike_types' ? (
+                    getMonthlyBikeTypesData() && <Bar data={getMonthlyBikeTypesData()!} options={getResponsiveBarOptions()} />
+                  ) : (
+                    getMonthAvgDurationData() && <Bar data={getMonthAvgDurationData()!} options={getResponsiveBarOptions()} />
+                  )}
+                </div>
               </div>
 
               <div className="chart-container">
                 <h3>Most Popular Days of the Week</h3>
-                {getPopularDaysData() && <Line data={getPopularDaysData()!} options={lineOptions} />}
+                <div>
+                  {getPopularDaysData() && <Line data={getPopularDaysData()!} options={lineOptions} />}
+                </div>
               </div>
 
               <div className="chart-container">
                 <h3>Average Trip Duration by User Type</h3>
-                {getDurationComparisonData() && (
-                  <Bar data={getDurationComparisonData()!} />
-                )}
+                <div>
+                  {getDurationComparisonData() && (
+                    <Bar data={getDurationComparisonData()!} options={getResponsiveBarOptions()} />
+                  )}
+                </div>
               </div>
 
               <div className="chart-container">
                 <h3>Bike Type Usage</h3>
-                {getBikeTypesData() && (
-                  <Doughnut data={getBikeTypesData()!} options={doughnutOptions} />
-                )}
+                <div>
+                  {getBikeTypesData() && (
+                    <Doughnut data={getBikeTypesData()!} options={doughnutOptions} />
+                  )}
+                </div>
               </div>
               
               <div className="chart-container">
                 <h3>Most Common Routes</h3>
-                {getCommonRoutesData() && (
-                  <Bar data={getCommonRoutesData()!} />
-                )}
+                <div>
+                  {getCommonRoutesData() && (
+                    <Bar data={getCommonRoutesData()!} options={getResponsiveBarOptions()} />
+                  )}
+                </div>
                 <p className="chart-note-style">Top 10 routes shown.</p>
               </div>
             </div>

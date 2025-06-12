@@ -71,9 +71,66 @@ p, li {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  height: 450px; /* Increased from 500px to accommodate dropdown and notes */
+  height: 450px;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Chart content area with horizontal scrolling */
+.chart-container > div:not(.chart-header):not(.chart-note-style) {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+  scroll-behavior: smooth;
+  position: relative;
+  /* Style scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 0, 0, 0.3) rgba(128, 0, 0, 0.1);
+  /* Force enable scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Webkit scrollbar styling */
+.chart-container > div:not(.chart-header):not(.chart-note-style)::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-container > div:not(.chart-header):not(.chart-note-style)::-webkit-scrollbar-track {
+  background: rgba(128, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.chart-container > div:not(.chart-header):not(.chart-note-style)::-webkit-scrollbar-thumb {
+  background: rgba(128, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.chart-container > div:not(.chart-header):not(.chart-note-style)::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 0, 0, 0.5);
+}
+
+/* Chart canvas wrapper to ensure minimum width */
+.chart-container canvas {
+  min-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  /* Allow canvas to be wider than container */
+  flex-shrink: 0;
+}
+
+/* Force chart.js to respect our sizing */
+.chart-container .chartjs-render-monitor {
+  min-width: 100% !important;
+  width: 100% !important;
 }
 
 /* Chart header styling */
@@ -332,6 +389,13 @@ p, li {
   .chart-container {
     height: 400px;
     padding: 18px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .chart-container canvas {
+    min-width: 600px; /* Minimum chart width on tablets */
+    width: max(100%, 600px);
   }
   
   .chart-header h3 {
@@ -345,10 +409,17 @@ p, li {
 }
 
 /* Small tablet styles */
-@media (max-width: 768px) and (min-width: 481px) {
+@media (max-width: 768px) and (min-width: 360px) {
   .chart-container {
     height: 350px;
     padding: 16px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .chart-container canvas {
+    min-width: 500px; /* Minimum chart width on small tablets */
+    width: max(100%, 500px);
   }
   
   .chart-header h3 {
@@ -384,10 +455,31 @@ p, li {
   
   /* Make charts smaller on mobile */
   .chart-container {
-    height: 320px; /* Reduced from 350px */
-    padding: 15px;
+    height: 320px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .chart-container > div:not(.chart-header):not(.chart-note-style) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    max-width: 100%;
+    /* Ensure scrolling works on mobile */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+
+  .chart-container canvas {
+    min-width: 350px !important;
+    width: max(100%, 350px) !important;
+    height: 100% !important;
+    flex-shrink: 0;
   }
 
   .chart-header {
@@ -502,10 +594,21 @@ p, li {
   
   /* Even smaller charts on very small screens */
   .chart-container {
-    height: 280px; /* Reduced from 280px to be consistent */
-    padding: 12px;
+    height: 280px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .chart-container canvas {
+    min-width: 280px !important;
+    width: max(100%, 280px) !important;
+    height: 100% !important;
+    flex-shrink: 0;
   }
 
   .chart-header h3 {
@@ -551,7 +654,16 @@ p, li {
   
   .chart-container {
     height: 250px;
-    padding: 10px;
+    padding: 8px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .chart-container canvas {
+    min-width: 240px !important;
+    width: max(100%, 240px) !important;
+    height: 100% !important;
+    flex-shrink: 0;
   }
   
   .chart-header h3 {

@@ -4,7 +4,12 @@
   <meta charset="utf-8">
   <title>Wu Viz</title>
   <script>
-    sessionStorage.setItem('redirectPath', window.location.pathname + window.location.search + window.location.hash);
+    // Store the path relative to the base path
+    var path = window.location.pathname;
+    var basePath = '/Wu-Viz';
+    var relativePath = path.startsWith(basePath) ? path.substring(basePath.length) : path;
+    
+    sessionStorage.setItem('redirectPath', relativePath + window.location.search + window.location.hash);
     window.location.replace('/Wu-Viz/');
   </script>
 </head>

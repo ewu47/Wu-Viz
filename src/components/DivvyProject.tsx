@@ -919,11 +919,9 @@ const DivvyProject: React.FC = () => {
             Since the raw data contained slight variations in latitude and longitude coordinates for the same station locations, 
             I cleaned and standardized the data by averaging these coordinates to create 20 distinct lat/lng for station locations. 
             Using this, I updated the large divvy data tables and then 
-            started analyzing the quick stats and cool trends.</p>
-
-          <p>I didn't want to be super intricate with all of the dates, 
+            started analyzing the quick stats and cool trends. I didn't want to be super intricate with all of the dates, 
             so I kept the data between October 2024 and May 2025.</p>
-            
+          <br/>
           <p>
             <strong>Enjoy the Divvy stats of the 2024-2025 school year!</strong>
           </p>

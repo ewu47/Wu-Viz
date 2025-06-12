@@ -4,22 +4,10 @@
   <meta charset="utf-8">
   <title>Wu Viz</title>
   <script>
-    var path = window.location.pathname;
-    var basePath = '/Wu-Viz';
-    
-    var route = path.startsWith(basePath) ? path.substring(basePath.length) : path;
-    
-    if (route && route !== '/') {
-      sessionStorage.setItem('redirect', route + window.location.search + window.location.hash);
-      // Redirect to the stored route
-      window.location.replace('/Wu-Viz' + route + window.location.search + window.location.hash);
-    } else {
-      // If no specific route, go to base
-      window.location.replace('/Wu-Viz/');
-    }
+    window.location.replace('/Wu-Viz/');
   </script>
 </head>
 <body>
-  <div>Loading Wu Viz...</div>
+  <div>Redirecting...</div>
 </body>
 </html>

@@ -1,182 +1,319 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-  count?: number;
+export interface AnalyticsSummary {
+  trips: number
+  /** @deprecated Prefer `trips`; kept for compatibility */
+  total_trips: number
+  member: number
+  casual: number
+  classic: number
+  electric: number
+  not_published: number
+  member_share: number
+  electric_share_among_typed: number | null
+  avg_duration_minutes: number
+  median_duration_minutes: number
+  p90_duration_minutes: number
+  total_duration_hours: number
+  member_duration_hours: number
+  casual_duration_hours: number
+  total_stations: number
+  stationless_starts: number
+  unique_routes: number
+  after_dark_trips: number
+  after_dark_share: number
+  station_metadata_complete_share: number
+  coordinate_metadata_complete_share: number
+  estimated_miles_total: number | null
+  estimated_miles_avg: number | null
+  estimated_miles_trip_coverage: number
+  first_trip: string
+  latest_trip: string
+  active_days: number
+  trips_per_active_day: number
 }
 
-export interface LongTrip {
-  trip_id: string;
-  start_time: string;
-  end_time: string;
-  station_type: string;
-  station_name: string;
-  lat: number;
-  lng: number;
-  member_casual: string;
+export interface PeriodStat {
+  trips: number
+  member: number
+  casual: number
+  classic: number
+  electric: number
+  not_published: number
+  member_share: number
+  electric_share_among_typed: number | null
+  avg_duration_minutes: number
+  median_duration_minutes: number
+  p90_duration_minutes: number
+  total_duration_hours: number
+  member_duration_hours: number
+  casual_duration_hours: number
+  after_dark_trips: number
+  after_dark_share: number
+  estimated_miles_total: number | null
+  estimated_miles_avg: number | null
+  estimated_miles_trip_coverage: number
+  coordinate_metadata_complete_share: number
+  station_metadata_complete_share: number
 }
 
-export interface Trip {
-  id: number;
-  start_time: string;
-  end_time: string;
-  start_station_id: string;
-  end_station_id: string;
-  start_lat: number;
-  start_lng: number;
-  end_lat: number;
-  end_lng: number;
-  member_casual: string;
+export interface MonthlyStat extends PeriodStat {
+  month: string
 }
 
-export interface Station {
-  station_id: string;
-  station_name: string;
-  latitude: number;
-  longitude: number;
+export interface DailyStat extends PeriodStat {
+  date: string
+  temp_mean_f: number | null
+  precip_in: number | null
 }
 
-// Add all your new interfaces here
+export interface YearlyStat extends PeriodStat {
+  year: number
+}
+
+export interface WeekdayHourStat {
+  weekday: number
+  hour: number
+  trips: number
+  member: number
+  casual: number
+}
+
 export interface StationStat {
-  station_name: string;
-  trip_count: number;
+  station: string
+  trips: number
+  avg_duration_minutes: number | null
+  estimated_miles_avg: number | null
 }
 
-export interface Route {
-  start_station: string;
-  end_station: string;
-  trip_count: number;
+export interface RouteStat {
+  start_station: string
+  end_station: string
+  trips: number
+  avg_duration_minutes: number | null
+  estimated_miles_avg: number | null
 }
 
-export interface HourlyData {
-  hour: number;
-  trip_count: number;
+export interface MemberSummary {
+  type: 'casual' | 'member'
+  trips: number
+  avg_duration_minutes: number
+  median_duration_minutes: number
+  total_duration_hours: number
+  estimated_miles_total: number | null
+  estimated_miles_avg: number | null
 }
 
-export interface MonthlyData {
-  month: number;
-  trip_count: number;
+export interface BikeSummary {
+  type: 'classic_bike' | 'electric_bike' | 'not_published'
+  trips: number
+  avg_duration_minutes: number | null
+  estimated_miles_total: number | null
+  estimated_miles_avg: number | null
 }
 
-export interface MemberData {
-  member_type: string;
-  count: number;
+export interface StationMapPoint {
+  station: string
+  lat: number
+  lng: number
+  /** Coordinate-backed start+end observations only; name-only trips excluded */
+  mapped_trips: number
+  mapped_starts: number
+  mapped_ends: number
 }
 
-export interface BikeTypeData {
-  bike_type: string;
-  count: number;
+export interface DemoDayTrip {
+  start_station: string
+  end_station: string
+  start_lat: number
+  start_lng: number
+  end_lat: number
+  end_lng: number
+  /** Minutes from local midnight */
+  start_minute: number
+  duration_seconds: number
+  member_casual: string
+  rideable_type: string
 }
 
-export interface DayData {
-  day_of_week: number;
-  trip_count: number;
+export interface DemoDay {
+  date: string
+  label: string
+  blurb: string
+  trip_count: number
+  station_count: number
+  trips: DemoDayTrip[]
 }
 
-export interface DurationData {
-  member_type: string;
-  avg_duration: number;
+export interface MapBounds {
+  minLat: number
+  maxLat: number
+  minLng: number
+  maxLng: number
 }
 
-export interface MemberData {
-  month: number;
-  member_count : number;
-  casual_count: number;
+export interface YearAnalytics {
+  summary: AnalyticsSummary
+  monthly: MonthlyStat[]
+  weekday_hour: WeekdayHourStat[]
+  top_start_stations: StationStat[]
+  top_end_stations: StationStat[]
+  after_dark_start_stations: StationStat[]
+  after_dark_end_stations: StationStat[]
+  common_routes: RouteStat[]
+  member_summary: MemberSummary[]
+  bike_summary: BikeSummary[]
+  stations: StationMapPoint[]
 }
 
-// Updated Analytics interface
 export interface Analytics {
-  long_uchicago_trips: LongTrip[];
-  top_start_stations: StationStat[];
-  top_end_stations: StationStat[];
-  common_routes: Route[];
-  trips_by_hour: HourlyData[];
-  monthly_stats: MonthlyData[];
-  popular_days: DayData[];
-  member_breakdown: MemberData[];
-  bike_types: BikeTypeData[];
-  member_avg_duration: DurationData[];
-  total_trips: [{ count: number }];
-  total_stations: [{ count: number }];
-  avg_duration: [{ avg: number }];
-  avg_distance: [{ avg: number }];
-  total_distance: [{ count: number }];
-  total_duration: [{ count: number }];
-  start_stations_after_9_pm: StationStat[];
-  end_stations_after_9_pm: StationStat[];
-  member_casual_user_count: MemberData[];
-  time_trips: HourlyData[];
+  summary: AnalyticsSummary
+  monthly: MonthlyStat[]
+  daily?: DailyStat[]
+  yearly: YearlyStat[]
+  weekday_hour: WeekdayHourStat[]
+  top_start_stations: StationStat[]
+  top_end_stations: StationStat[]
+  after_dark_start_stations: StationStat[]
+  after_dark_end_stations: StationStat[]
+  common_routes: RouteStat[]
+  member_summary: MemberSummary[]
+  bike_summary: BikeSummary[]
+  stations: StationMapPoint[]
+  stations_by_month: Record<string, StationMapPoint[]>
+  demo_days: DemoDay[]
+  covid: CovidComparison
+  weather: WeatherAnalysis
+  forecast: MonthForecast
+  by_year: Record<string, YearAnalytics>
+  map_bounds: MapBounds
+  generated_at: string
 }
 
-export interface TableColumn {
-  column_name: string;
-  data_type: string;
-  is_nullable: string;
+export interface CovidEraSlice {
+  summary: AnalyticsSummary
+  weekday_hour: WeekdayHourStat[]
 }
 
-export interface TableData {
-  data: any[];
-  total: number;
-  limit: number;
-  offset: number;
+export interface CovidComparison {
+  definition: {
+    pre_end: string
+    post_start: string
+    note: string
+  }
+  pre: CovidEraSlice
+  post: CovidEraSlice
 }
 
-// Updated divvyApi to use only static data
+export interface WeatherTempBin {
+  label: string
+  days: number
+  trips: number
+  avg_trips_per_day: number
+}
+
+export interface WeatherAnalysis {
+  source: string
+  attribution: string
+  days_joined: number
+  by_temperature_bin: WeatherTempBin[]
+  precip: {
+    dry_days: number
+    wet_days: number
+    dry_avg_trips: number
+    wet_avg_trips: number
+    wet_threshold_inches: number
+  }
+  monthly: Array<{
+    month: string
+    trips: number
+    avg_temp_f: number
+    precip_inches: number
+    avg_trips_per_day: number
+  }>
+}
+
+export interface MonthForecast {
+  target_month: string
+  based_on_latest_trip: string
+  method: string
+  predicted_trips: number | null
+  low: number | null
+  high: number | null
+  predicted_trips_per_day: number | null
+  components: {
+    seasonal_same_month: number | null
+    same_month_last_year: number | null
+    trend_ratio: number
+    weather_adjustment: number
+    expected_temp_f: number | null
+    expected_precip_in: number | null
+    same_month_samples: number
+  }
+  backtest: {
+    months_scored: number
+    mae_trips: number | null
+    mape: number | null
+    error_stdev: number | null
+    recent: Array<{
+      month: string
+      actual: number
+      predicted: number
+      abs_error: number
+      pct_error: number
+    }>
+  }
+  learning_notes: string[]
+}
+
+export type AnalyticsPeriod =
+  | { mode: 'all' }
+  | { mode: 'year'; year: number }
+  | { mode: 'month'; year: number; month: string }
+  | { mode: 'day'; year: number; month: string; date: string }
+
+export interface AnalyticsSlice {
+  period: AnalyticsPeriod
+  label: string
+  summary: AnalyticsSummary
+  monthly: MonthlyStat[]
+  daily: DailyStat[]
+  yearly: YearlyStat[]
+  weekday_hour: WeekdayHourStat[]
+  top_start_stations: StationStat[]
+  top_end_stations: StationStat[]
+  after_dark_start_stations: StationStat[]
+  after_dark_end_stations: StationStat[]
+  common_routes: RouteStat[]
+  member_summary: MemberSummary[]
+  bike_summary: BikeSummary[]
+  stations: StationMapPoint[]
+  map_bounds: MapBounds
+  /** Full-history monthly series for the pulse chart */
+  pulseMonthly: MonthlyStat[]
+  brushStartIndex: number
+  brushEndIndex: number
+  rankingsScopedToYear: boolean
+}
+
+interface AnalyticsResponse {
+  success: boolean
+  data: Analytics
+  message?: string
+}
+
 export const divvyApi = {
-  async getTrips(_filters?: {
-    start_date?: string;
-    end_date?: string;
-    station?: string;
-    limit?: number;
-  }): Promise<ApiResponse<Trip[]>> {
-    // For static deployment, return empty or mock data
-    return {
-      success: true,
-      data: [],
-      message: 'Static mode - trips data not available'
-    };
-  },
-
-  async getStations(): Promise<ApiResponse<Station[]>> {
-    // For static deployment, return empty or mock data
-    return {
-      success: true,
-      data: [],
-      message: 'Static mode - stations data not available'
-    };
-  },
-
-  async getAnalytics(): Promise<ApiResponse<Analytics>> {
+  async getAnalytics(): Promise<AnalyticsResponse> {
     try {
-      // Always use static JSON file
-      const response = await fetch('/Wu-Viz/analytics.json');
+      const response = await fetch(`${import.meta.env.BASE_URL}analytics.json`)
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Analytics request failed (${response.status})`)
       }
-      const data = await response.json();
-      console.log('Loaded static analytics data:', data.data.generated_at);
-      return data;
+      return await response.json() as AnalyticsResponse
     } catch (error) {
-      console.error('Error fetching static analytics:', error);
       return {
         success: false,
         data: {} as Analytics,
-        message: error instanceof Error ? error.message : 'Failed to fetch static analytics'
-      };
+        message: error instanceof Error ? error.message : 'Analytics could not be loaded',
+      }
     }
-  }
-};
-
-export const databaseApi = {
-  async getTables(): Promise<ApiResponse<string[]>> {
-    // For static deployment, return empty data
-    return {
-      success: true,
-      data: [],
-      message: 'Static mode - database access not available'
-    };
   },
-};
+}

@@ -1,1347 +1,818 @@
-import React, { useState, useEffect } from 'react';
-import { divvyApi } from '../services/api';
-import ReactECharts from 'echarts-for-react';
+import { useEffect, useMemo, useState } from 'react'
+import { Bike, Clock3, CloudRain, Database, MapPin, Moon, Route, Sparkles } from 'lucide-react'
+
+import { AcademicCalendar } from '@/components/divvy/AcademicCalendar'
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  RadarController,
-  RadialLinearScale,
-} from 'chart.js';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+  ActivityPatternsChart,
+  BikeEvolutionChart,
+  CampusPulseChart,
+  CovidHourCompareChart,
+  DurationByRiderChart,
+  type PulseMetric,
+  RiderMixChart,
+  RoutesChart,
+  StationRankingChart,
+  WeatherCorrelationChart,
+  WeatherSeasonChart,
+  WeatherTempChart,
+} from '@/components/divvy/AnalyticsCharts'
+import { AtlasNav } from '@/components/divvy/AtlasNav'
+import { PeriodControls } from '@/components/divvy/PeriodControls'
+import { StationMap } from '@/components/divvy/StationMap'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { availableYears, filledDaysForMonth, selectAnalyticsSlice } from '@/lib/analytics-period'
+import { divvyApi, type Analytics, type AnalyticsPeriod, type WeekdayHourStat } from '@/services/api'
 
-// Import the image
-import mapZoneImage from '/map-zone.png';
+const mapZoneImage = `${import.meta.env.BASE_URL}map-zone.png`
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  RadarController,
-  RadialLinearScale
-);
+function formatMonth(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
-const DivvyProject: React.FC = () => {
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function formatDay(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
 
-  // Dropdown states for combined charts
-  const [startStationsView, setStartStationsView] = useState<'all_day' | 'after_9pm'>('all_day');
-  const [endStationsView, setEndStationsView] = useState<'all_day' | 'after_9pm'>('all_day');
-  const [hourlyView, setHourlyView] = useState<'by_period' | 'by_hour'>('by_period');
-  const [monthlyView, setMonthlyView] = useState<'total_trips' | 'user_distribution' | 'bike_types' | 'avg_duration'>('total_trips');
+function formatMiles(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
 
-  // Add window size state
-  const [windowSize, setWindowSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight
-  });
+function Metric({
+  label,
+  value,
+  detail,
+}: {
+  label: string
+  value: string
+  detail: string
+}) {
+  return (
+    <div className="border-t border-border pt-4">
+      <div key={value} className="atlas-metric-value font-mono text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
+        {value}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-foreground">{label}</div>
+      <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</div>
+    </div>
+  )
+}
 
-  // Add resize listener
+function SectionIntro({
+  id,
+  eyebrow,
+  title,
+  description,
+}: {
+  id?: string
+  eyebrow: string
+  title: string
+  description: string
+}) {
+  return (
+    <div className="atlas-rise max-w-3xl">
+      <p id={id} className="font-mono text-xs font-medium uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">{title}</h2>
+      <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
+export default function DivvyProject() {
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [period, setPeriod] = useState<AnalyticsPeriod>({ mode: 'all' })
+  const [pulseMetric, setPulseMetric] = useState<PulseMetric>('trips')
+
   useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-    };
+    divvyApi.getAnalytics().then((response) => {
+      if (response.success) setAnalytics(response.data)
+      else setError(response.message ?? 'Analytics could not be loaded')
+    })
+  }, [])
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const slice = useMemo(
+    () => (analytics ? selectAnalyticsSlice(analytics, period) : null),
+    [analytics, period],
+  )
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('Fetching static analytics data...');
-        
-        const response = await divvyApi.getAnalytics();
-        if (response.success) {
-          setAnalytics(response.data);
-          console.log('Static data loaded successfully');
-        } else {
-          setError(response.message || 'Failed to fetch data');
-        }
-      } catch (err) {
-        console.error('Error loading static data:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred loading static data');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const activitySeries = useMemo(() => {
+    if (!analytics) return null
+    const series: Record<string, WeekdayHourStat[]> = {
+      all: analytics.weekday_hour,
+      pre_covid: analytics.covid.pre.weekday_hour,
+      post_covid: analytics.covid.post.weekday_hour,
+    }
+    for (const [year, yearSlice] of Object.entries(analytics.by_year)) {
+      series[year] = yearSlice.weekday_hour
+    }
+    return series
+  }, [analytics])
 
-    fetchData();
-  }, []);
+  const activityDefaultScope = period.mode === 'all' ? 'all' : String(period.year)
 
-  // Chart data preparation functions
-  const getTopStartStationsChartData = () => {
-    if (!analytics?.top_start_stations) return null;
-
-    const stations = analytics.top_start_stations;
-    const barThickness = windowSize.width < 768 ? 8 : stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
+  const findings = useMemo(() => {
+    if (!slice) return null
+    const peakMonth = slice.monthly.reduce(
+      (peak, row) => (row.trips > peak.trips ? row : peak),
+      slice.monthly[0],
+    )
+    const member = slice.member_summary.find((row) => row.type === 'member')
+    const typedBikes = slice.summary.classic + slice.summary.electric
+    const electricShare = typedBikes > 0
+      ? slice.summary.electric / typedBikes * 100
+      : slice.summary.electric_share_among_typed ?? 0
 
     return {
-      labels: stations.map((station: any) => {
-        const name = Object.values(station)[0] as string;
-        // Much shorter labels to prevent cutoff
-        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
-        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
-      }),
-      datasets: [
-        {
-          label: 'Number of Trips',
-          data: stations.map((station: any) => Object.values(station)[3]),
-          backgroundColor: 'rgba(128, 0, 0, 0.8)',
-          borderColor: 'rgba(128, 0, 0, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: windowSize.width < 768 ? 20 : 35,
-        },
-      ],
-    };
-  };
+      peakMonth,
+      memberShare: slice.summary.member_share,
+      electricShare,
+      topStart: slice.top_start_stations[0],
+      nightEnd: slice.after_dark_end_stations[0],
+      memberHours: member?.total_duration_hours,
+    }
+  }, [slice])
 
-  const getTopEndStationsChartData = () => {
-    if (!analytics?.top_end_stations) return null;
-
-    const stations = analytics.top_end_stations;
-    const barThickness = stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
-
-    return {
-      labels: stations.map((station: any) => {
-        const name = Object.values(station)[0] as string;
-        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
-        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
-      }),
-      datasets: [
-        {
-          label: 'Number of Trips',
-          data: stations.map((station: any) => Object.values(station)[3]),
-          backgroundColor: 'rgba(128, 0, 0, 0.8)',
-          borderColor: 'rgba(128, 0, 0, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 35,
-        },
-      ],
-    };
-  };
-
-  const getHourlyTripsData = () => {
-    if (!analytics?.trips_by_hour) return null;
-
-    return {
-      labels: ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'],
-      datasets: [
-        {
-          label: 'Overnight Trips',
-          data: analytics.trips_by_hour.map((hour: any) => Object.values(hour)[1]),
-          borderColor: 'rgba(128, 0, 0, 1)',
-          backgroundColor: 'rgba(128, 0, 0, 0.1)',
-          tension: 0.1,
-        },
-        {
-          label: 'Morning Trips',
-          data: analytics.trips_by_hour.map((row: any) => Object.values(row)[2]),
-          borderColor: 'rgba(255, 140, 0, 1)',
-          backgroundColor: 'rgba(255, 140, 0, 0.1)',
-          tension: 0.1,
-        },
-        {
-          label: 'Afternoon Trips',
-          data: analytics.trips_by_hour.map((row: any) => Object.values(row)[3]),
-          borderColor: 'rgba(220, 20, 60, 1)',
-          backgroundColor: 'rgba(220, 20, 60, 0.1)',
-          tension: 0.1,
-        },
-        {
-          label: 'Evening Trips',
-          data: analytics.trips_by_hour.map((row: any) => Object.values(row)[4]),
-          borderColor: 'rgba(128, 0, 128, 1)',
-          backgroundColor: 'rgba(128, 0, 128, 0.1)',
-          tension: 0.1,
-        },
-      ],
-    };
-  };
-
-  const getMonthlyTripsData = () => {
-    if (!analytics?.monthly_stats) return null;
-
-    const months = ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'];
-    const data = analytics.monthly_stats;
-    // Responsive bar thickness
-    const barThickness = windowSize.width < 768 ? 15 : data.length > 8 ? 20 : 30;
-
-    return {
-      labels: data.map((_: any, index: number) => {
-        const fullMonth = months[index] || `Month ${index + 1}`;
-        // Shorter month names on mobile
-        return windowSize.width < 768 ? fullMonth.substring(0, 3) : fullMonth;
-      }),
-      datasets: [
-        {
-          label: 'Monthly Trips',
-          data: data.map((month: any) => Object.values(month)[1]),
-          backgroundColor: 'rgba(128, 0, 0, 0.8)',
-          borderColor: 'rgba(128, 0, 0, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: windowSize.width < 768 ? 25 : 35,
-        },
-      ],
-    };
-  };
-
-  const getMemberDistributionData = () => {
-    if(!analytics?.member_casual_user_count) return null;
-
-    return {
-      labels: ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'],
-      datasets: [
-        {
-          label: 'Member Count',
-          data: analytics.member_casual_user_count.map((row: any) => Object.values(row)[1]), // member_count column
-          backgroundColor: 'rgba(128, 0, 0, 0.8)',
-          borderColor: 'rgba(128, 0, 0, 1)',
-          borderWidth: 1,
-          barThickness: 20,
-          maxBarThickness: 35,
-        },
-        {
-          label: 'Casual User Count',
-          data: analytics.member_casual_user_count.map((row: any) => Object.values(row)[2]), // casual_count column
-          backgroundColor: 'rgba(220, 20, 60, 0.8)',
-          borderColor: 'rgba(220, 20, 60, 1)',
-          borderWidth: 1,
-          barThickness: 20,
-          maxBarThickness: 35,
-        },
-      ],
-    };
-  };
-
-  const getBikeTypesData = () => {
-    if (!analytics?.bike_breakdown) return null;
-
-    return {
-      labels: ['Classic Bikes', 'Electric Bikes'],
-      datasets: [
-        {
-          label: 'Count',
-          data: analytics.bike_breakdown.map((item: any) => Object.values(item)[1]),
-          backgroundColor: [
-            'rgba(128, 0, 0, 0.8)',
-            'rgba(165, 42, 42, 0.8)',
-            'rgba(220, 20, 60, 0.8)',
-            'rgba(178, 34, 34, 0.8)',
-          ],
-          borderColor: [
-            'rgba(128, 0, 0, 1)',
-            'rgba(165, 42, 42, 1)',
-            'rgba(220, 20, 60, 1)',
-            'rgba(178, 34, 34, 1)',
-          ],
-          borderWidth: 2,
-        },
-      ],
-    };
-  };
-
-  const getPopularDaysData = () => {
-    if (!analytics?.popular_days) return null;
-
-    return {
-      labels: analytics.popular_days.map((day: any) => Object.values(day)[0]),
-      datasets: [
-        {
-          label: 'Total ',
-          data: analytics.popular_days.map((day: any) => Object.values(day)[1]),
-          borderColor: 'rgba(128, 0, 0, 1)',
-          backgroundColor: 'rgba(128, 0, 0, 0.1)',
-          tension: 0.1,
-        },
-      ],
-    };
-  };
-
-  const getCommonRoutesData = () => {
-    if (!analytics?.common_routes) return null;
-
-    const routes = analytics.common_routes;
-    const barThickness = routes.length > 20 ? 8 : routes.length > 10 ? 15 : 25;
-
-    return {
-      labels: routes.map((route: any) => {
-        const values = Object.values(route);
-        const routeName = `${values[0]} → ${values[3]}`;
-        const maxLength = windowSize.width < 480 ? 15 : windowSize.width < 768 ? 20 : 30;
-        return routeName.length > maxLength ? routeName.substring(0, maxLength) + '...' : routeName;
-      }),
-      datasets: [
-        {
-          label: 'Trip Count',
-          data: routes.map((route: any) => Object.values(route)[6]),
-          backgroundColor: 'rgba(165, 42, 42, 0.8)',
-          borderColor: 'rgba(165, 42, 42, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 30,
-          // Store full route names for tooltip
-          fullRouteNames: routes.map((route: any) => {
-            const values = Object.values(route);
-            return `${values[0]} → ${values[3]}`;
-          }),
-        },
-      ],
-    };
-  };
-
-  const getDurationComparisonData = () => {
-    if (!analytics?.member_avg_duration) return null;
-
-    const data = analytics.member_avg_duration;
-    const barThickness = data.length > 5 ? 30 : 50;
-
-    return {
-      labels: ['Casual Users', 'Members'],
-      datasets: [
-        {
-          label: 'Average Duration (minutes)',
-          data: data.map((item: any) => Object.values(item)[1]),
-          backgroundColor: [
-            'rgba(220, 20, 60, 0.8)',
-            'rgba(178, 34, 34, 0.8)',
-          ],
-          borderColor: [
-            'rgba(220, 20, 60, 1)',
-            'rgba(178, 34, 34, 1)',
-          ],
-          borderWidth: 2,
-          barThickness: barThickness,
-          maxBarThickness: 60,
-        },
-      ],
-    };
-  };
-
-  const getStartStationsAfter9pmData = () => {
-    if (!analytics?.start_stations_after_9pm) return null;
-
-    const stations = analytics.start_stations_after_9pm;
-    const barThickness = stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
-
-    return {
-      labels: stations.map((station: any) => {
-        const name = Object.values(station)[0] as string;
-        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
-        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
-      }),
-      datasets: [
-        {
-          label: 'Trips After 9 PM',
-          data: stations.map((station: any) => Object.values(station)[1]),
-          backgroundColor: 'rgba(165, 42, 42, 0.8)',
-          borderColor: 'rgba(165, 42, 42, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 30,
-        },
-      ],
-    };
-  };
-
-  const getEndStationsAfter9pmData = () => {
-    if (!analytics?.end_stations_after_9pm) return null;
-
-    const stations = analytics.end_stations_after_9pm;
-    const barThickness = stations.length > 20 ? 12 : stations.length > 10 ? 20 : 30;
-
-    return {
-      labels: stations.map((station: any) => {
-        const name = Object.values(station)[0] as string;
-        const maxLength = windowSize.width < 480 ? 12 : windowSize.width < 768 ? 15 : 25;
-        return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
-      }),
-      datasets: [
-        {
-          label: 'Trips After 9 PM',
-          data: stations.map((station: any) => Object.values(station)[1]),
-          backgroundColor: 'rgba(165, 42, 42, 0.8)',
-          borderColor: 'rgba(165, 42, 42, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 30,
-        },
-      ],
-    };
-  };
-
-  const getHourlyTimeData = () => {
-    if (!analytics?.time_trips) return null;
-    const hours = analytics.time_trips;
-    return {
-      labels: hours.map((hour: any) => Object.values(hour)[0]),
-      datasets: [
-        {
-          label: 'Total Trips',
-          data: hours.map((hour: any) => Object.values(hour)[1]),
-          borderColor: 'rgba(128, 0, 0, 1)',
-          backgroundColor: 'rgba(128, 0, 0, 0.1)',
-          tension: 0.1,
-        },
-      ],
-    };
-  };
-
-  const getMonthlyBikeTypesData = () => {
-    if (!analytics?.monthly_stats) return null;
-    const months = ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'];
-    const data = analytics.monthly_stats;
-    const barThickness = data.length > 8 ? 20 : 30;
-    return {
-      labels: data.map((_: any, index: number) => months[index] || `Month ${index + 1}`),
-      datasets: [
-        {
-          label: 'Classic Bikes',
-          data: data.map((month: any) => Object.values(month)[4]), 
-          backgroundColor: 'rgba(128, 0, 0, 0.8)',
-          borderColor: 'rgba(128, 0, 0, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 35,
-        },
-        {
-          label: 'Electric Bikes',
-          data: data.map((month: any) => Object.values(month)[3]), 
-          backgroundColor: 'rgba(220, 20, 60, 0.8)',
-          borderColor: 'rgba(220, 20, 60, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 35,
-        },
-      ]
-    };
+  if (error) {
+    return (
+      <main className="mx-auto min-h-[55vh] max-w-3xl px-6 py-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>Analytics unavailable</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+        </Card>
+      </main>
+    )
   }
 
-  const getMonthAvgDurationData = () => {
-    if (!analytics?.monthly_stats) return null;
-    const months = ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'];
-    const data = analytics.monthly_stats;
-    const barThickness = data.length > 8 ? 20 : 30;
-    return {
-      labels: data.map((_: any, index: number) => months[index] || `Month ${index + 1}`),
-      datasets: [
-        {
-          label: 'Average Duration (minutes)',
-          data: data.map((month: any) => Object.values(month)[2]),
-          backgroundColor: 'rgba(128, 0, 0, 0.8)',
-          borderColor: 'rgba(128, 0, 0, 1)',
-          borderWidth: 1,
-          barThickness: barThickness,
-          maxBarThickness: 35,
-        },
-      ],
-    };
-  };
+  if (!analytics || !slice || !findings || !activitySeries) {
+    return (
+      <main className="mx-auto min-h-[55vh] max-w-3xl px-6 py-24">
+        <div role="status" aria-live="polite" aria-busy="true">
+          <div className="h-2 w-24 animate-pulse rounded-full bg-primary" aria-hidden="true" />
+          <p className="mt-5 font-mono text-sm text-muted-foreground">Loading the mobility archive…</p>
+        </div>
+      </main>
+    )
+  }
 
-  const getAnimatedTripsOption = () => {
-    if (!analytics?.monthly_stats) return null;
-
-    const months = ['October 2024', 'November 2024', 'December 2024', 'January 2025', 'February 2025', 'March 2025', 'April 2025', 'May 2025'];
-    
-    // Calculate cumulative trips
-    let cumulativeTotal = 0;
-    const data = analytics.monthly_stats.map((month: any, index: number) => {
-      cumulativeTotal += Number(Object.values(month)[1]);
-      return {
-        name: months[index],
-        value: [months[index], cumulativeTotal],
-        itemStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0, color: '#ff6b6b'
-            }, {
-              offset: 0.5, color: '#800000'
-            }, {
-              offset: 1, color: '#4a0000'
-            }]
-          }
-        }
-      };
-    });
-
-    // Get current window dimensions for responsive sizing
-    const isSmallScreen = window.innerWidth < 768;
-    const isMediumScreen = window.innerWidth < 1024;
-
-    return {
-      backgroundColor: {
-        type: 'radial',
-        x: 0.3,
-        y: 0.3,
-        r: 0.8,
-        colorStops: [{
-          offset: 0, color: 'rgba(255,255,255,1)'
-        }, {
-          offset: 1, color: 'rgba(248,248,255,0.8)'
-        }]
-      },
-      title: {
-        text: 'Trips over Time',
-        subtext: 'UChicago/Hyde Park Divvy Bike Usage',
-        left: 'center',
-        top: isSmallScreen ? '3%' : '5%',
-        textStyle: {
-          color: '#800000',
-          fontSize: isSmallScreen ? 16 : isMediumScreen ? 20 : 24,
-          fontWeight: 'bold',
-          textShadowColor: 'rgba(0, 0, 0, 0.1)',
-          textShadowBlur: 3,
-          textShadowOffsetX: 2,
-          textShadowOffsetY: 2
-        },
-        subtextStyle: {
-          color: '#666',
-          fontSize: isSmallScreen ? 10 : isMediumScreen ? 12 : 14,
-          fontStyle: 'italic'
-        }
-      },
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        borderColor: '#800000',
-        borderWidth: 2,
-        textStyle: {
-          color: '#fff',
-          fontSize: isSmallScreen ? 12 : 14
-        },
-        formatter: function(params: any) {
-          const dataPoint = params[0];
-          return `
-            <div style="padding: ${isSmallScreen ? '6px' : '8px'};">
-              <div style="font-weight: bold; color: #ff6b6b; margin-bottom: 5px; font-size: ${isSmallScreen ? '11px' : '13px'};">${dataPoint.axisValue}</div>
-              <div style="color: #fff; font-size: ${isSmallScreen ? '10px' : '12px'};">🚲 ${dataPoint.seriesName}: <span style="color: #ffeb3b; font-weight: bold;">${dataPoint.value[1].toLocaleString()}</span></div>
-            </div>
-          `;
-        },
-        axisPointer: {
-          type: 'line',
-          lineStyle: {
-            color: '#800000',
-            width: 2,
-            type: 'dashed'
-          }
-        }
-      },
-      grid: {
-        top: isSmallScreen ? '20%' : '25%',
-        left: isSmallScreen ? '5%' : '8%',
-        right: isSmallScreen ? '5%' : '8%',
-        bottom: isSmallScreen ? '20%' : '15%',
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category',
-        data: months,
-        axisLabel: {
-          rotate: isSmallScreen ? 50 : 45,
-          fontSize: isSmallScreen ? 8 : isMediumScreen ? 10 : 12,
-          color: '#666',
-          fontWeight: 'bold',
-          interval: 0, // Show all labels
-          margin: isSmallScreen ? 8 : 12
-        },
-        axisLine: {
-          lineStyle: {
-            color: '#800000',
-            width: isSmallScreen ? 1 : 2
-          }
-        },
-        axisTick: {
-          alignWithLabel: true,
-          lineStyle: {
-            color: '#800000'
-          }
-        }
-      },
-      yAxis: {
-        type: 'value',
-        name: isSmallScreen ? 'Total Trips' : 'Total Cumulative Trips',
-        nameLocation: 'middle',
-        nameGap: isSmallScreen ? 40 : 60,
-        nameTextStyle: {
-          color: '#800000',
-          fontSize: isSmallScreen ? 10 : isMediumScreen ? 12 : 16,
-          fontWeight: 'bold',
-          rotation: 90
-        },
-        axisLabel: {
-          formatter: function(value: number) {
-            if (value >= 1000000) {
-              return (value / 1000000).toFixed(1) + 'M';
-            } else if (value >= 1000) {
-              return (value / 1000).toFixed(0) + 'K';
-            }
-            return value.toString();
-          },
-          fontSize: isSmallScreen ? 8 : isMediumScreen ? 10 : 12,
-          color: '#666',
-          fontWeight: 'bold'
-        },
-        axisLine: {
-          lineStyle: {
-            color: '#800000',
-            width: isSmallScreen ? 1 : 2
-          }
-        },
-        splitLine: {
-          lineStyle: {
-            color: 'rgba(128, 0, 0, 0.1)',
-            type: 'dashed'
-          }
-        }
-      },
-      series: [{
-        name: 'Cumulative Trips',
-        type: 'line',
-        data: data,
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: function(_value: any, params: any) {
-          const baseSize = isSmallScreen ? 6 : 8;
-          const increment = isSmallScreen ? 1 : 2;
-          return Math.max(baseSize, Math.min(baseSize + 6, params.dataIndex * increment + baseSize));
-        },
-        lineStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 1,
-            y2: 0,
-            colorStops: [{
-              offset: 0, color: '#ff6b6b'
-            }, {
-              offset: 0.5, color: '#800000'
-            }, {
-              offset: 1, color: '#4a0000'
-            }]
-          },
-          width: isSmallScreen ? 3 : 4,
-          shadowColor: 'rgba(128, 0, 0, 0.3)',
-          shadowBlur: isSmallScreen ? 8 : 10,
-          shadowOffsetY: isSmallScreen ? 2 : 3
-        },
-        itemStyle: {
-          color: '#800000',
-          borderColor: '#fff',
-          borderWidth: isSmallScreen ? 2 : 3,
-          shadowColor: 'rgba(128, 0, 0, 0.4)',
-          shadowBlur: isSmallScreen ? 6 : 8
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0, color: 'rgba(255, 107, 107, 0.4)'
-            }, {
-              offset: 0.5, color: 'rgba(128, 0, 0, 0.2)'
-            }, {
-              offset: 1, color: 'rgba(128, 0, 0, 0.05)'
-            }]
-          }
-        },
-        emphasis: {
-          focus: 'series',
-          itemStyle: {
-            shadowBlur: isSmallScreen ? 15 : 20,
-            shadowColor: 'rgba(255, 107, 107, 0.8)'
-          }
-        },
-        animationDuration: 8000,
-        animationEasing: 'quadraticInOut',
-        animationDelay: function(idx: number) {
-          return idx * 800;
-        }
-      }],
-      animationDuration: 8000,
-      animationEasing: 'quadraticInOut'
-    };
-  };
-
-  const getResponsiveBarOptions = () => {
-    const isMobile = windowSize.width < 768;
-    const isTablet = windowSize.width < 1024;
-    
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      resizeDelay: 100,
-      plugins: {
-        legend: {
-          position: 'top' as const,
-          labels: {
-            font: {
-              size: isMobile ? 11 : isTablet ? 13 : 15,
-            },
-            boxWidth: isMobile ? 10 : 14,
-            padding: isMobile ? 6 : 10,
-          },
-        },
-        tooltip: {
-          titleFont: {
-            size: isMobile ? 12 : 14,
-          },
-          bodyFont: {
-            size: isMobile ? 10 : 12,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            font: {
-              size: isMobile ? 8 : isTablet ? 10 : 12,
-            },
-            maxRotation: 90,
-            minRotation: 45,
-          },
-          grid: {
-            display: false,
-          },
-        },
-        y: {
-          ticks: {
-            font: {
-              size: isMobile ? 9 : isTablet ? 11 : 13,
-            },
-          },
-          grid: {
-            display: true,
-          },
-        },
-      },
-      layout: {
-        padding: {
-          left: isMobile ? 5 : 10,
-          right: isMobile ? 5 : 10,
-          top: isMobile ? 5 : 10,
-          bottom: isMobile ? 10 : 15,
-        },
-      },
-    };
-  };
-
-  const getResponsiveLineOptions = () => {
-    const isMobile = windowSize.width < 768;
-    const isTablet = windowSize.width < 1024;
-    
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      resizeDelay: 100,
-      plugins: {
-        legend: {
-          position: 'top' as const,
-          labels: {
-            font: {
-              size: isMobile ? 12 : isTablet ? 14 : 16,
-            },
-            boxWidth: isMobile ? 12 : 16,
-            padding: isMobile ? 8 : 12,
-          },
-        },
-        tooltip: {
-          titleFont: {
-            size: isMobile ? 14 : 16,
-          },
-          bodyFont: {
-            size: isMobile ? 12 : 14,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            font: {
-              size: isMobile ? 10 : isTablet ? 12 : 14,
-            },
-            maxRotation: isMobile ? 45 : 0,
-          },
-          grid: {
-            display: !isMobile,
-          },
-        },
-        y: {
-          ticks: {
-            font: {
-              size: isMobile ? 10 : isTablet ? 12 : 14,
-            },
-          },
-          grid: {
-            display: true,
-          },
-        },
-      },
-      layout: {
-        padding: {
-          left: isMobile ? 0 : 5,
-          right: isMobile ? 0 : 5,
-          top: isMobile ? 5 : 10,
-          bottom: isMobile ? 5 : 10,
-        },
-      },
-    };
-  };
-
-  const getResponsiveDoughnutOptions = () => {
-    const isMobile = windowSize.width < 768;
-    const isTablet = windowSize.width < 1024;
-    
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      resizeDelay: 100,
-      plugins: {
-        legend: {
-          position: isMobile ? 'bottom' : 'right' as const,
-          labels: {
-            font: {
-              size: isMobile ? 12 : isTablet ? 14 : 16,
-            },
-            boxWidth: isMobile ? 12 : 16,
-            padding: isMobile ? 8 : 12,
-            usePointStyle: true,
-          },
-        },
-        tooltip: {
-          titleFont: {
-            size: isMobile ? 14 : 16,
-          },
-          bodyFont: {
-            size: isMobile ? 12 : 14,
-          },
-        },
-      },
-      layout: {
-        padding: {
-          left: isMobile ? 5 : 10,
-          right: isMobile ? 5 : 10,
-          top: isMobile ? 5 : 10,
-          bottom: isMobile ? 10 : 10,
-        },
-      },
-    };
-  };
-
-  // Replace the old static options
-  const doughnutOptions = getResponsiveDoughnutOptions();
-  const lineOptions = getResponsiveLineOptions();
+  const { summary } = slice
+  const archiveRange = `${formatMonth(analytics.summary.first_trip)} – ${formatMonth(analytics.summary.latest_trip)}`
+  const periodRange = period.mode === 'day'
+    ? formatDay(period.date)
+    : `${formatDay(summary.first_trip)} – ${formatDay(summary.latest_trip)}`
+  const mixYear = period.mode === 'all' ? null : period.year
+  const mixData = mixYear == null
+    ? analytics.yearly
+    : analytics.by_year[String(mixYear)]?.monthly ?? slice.monthly
+  const mixMode = mixYear == null ? 'yearly' as const : 'monthly' as const
+  const years = availableYears(analytics)
+  const covidPre = analytics.covid.pre.summary
+  const covidPost = analytics.covid.post.summary
+  const wetDrop = analytics.weather.precip.dry_avg_trips > 0
+    ? (1 - analytics.weather.precip.wet_avg_trips / analytics.weather.precip.dry_avg_trips) * 100
+    : 0
+  const selectedDay = period.mode === 'day'
+    ? slice.daily.find((row) => row.date === period.date)
+    : null
+  const showDaily = period.mode === 'month' || period.mode === 'day'
+  const pulseGrain = showDaily ? 'day' as const : 'month' as const
+  const pulseRows = showDaily && period.mode !== 'all' && period.mode !== 'year'
+    ? filledDaysForMonth(analytics, period.month).map((row) => ({
+      periodKey: row.date,
+      trips: row.trips,
+      member_share: row.member_share,
+      total_duration_hours: row.total_duration_hours,
+      estimated_miles_total: row.estimated_miles_total,
+    }))
+    : (period.mode === 'year' ? slice.monthly : slice.pulseMonthly).map((row) => ({
+      periodKey: row.month,
+      trips: row.trips,
+      member_share: row.member_share,
+      total_duration_hours: row.total_duration_hours,
+      estimated_miles_total: row.estimated_miles_total,
+    }))
+  const pulseTitle = period.mode === 'day'
+    ? `Campus pulse · ${formatMonth(`${period.month}-01`)}`
+    : period.mode === 'month'
+      ? `Campus pulse · days in ${formatMonth(`${period.month}-01`)}`
+      : period.mode === 'year'
+        ? `Campus pulse · ${period.year}`
+        : 'Campus pulse · monthly archive'
+  const pulseDescription = pulseGrain === 'day'
+    ? 'Click a day on the chart or calendar to focus it. Metric tabs still apply.'
+    : period.mode === 'year'
+      ? 'Click a month to zoom into daily trips.'
+      : 'Click a month to zoom into daily trips. Drag the brush to scan the archive.'
 
   return (
-    <main className="project-content responsive-container" style={{ paddingBottom: '60px' }}>
+    <main>
+      <AtlasNav />
 
-      {/* Animated Trip Progression - moved to the very beginning */}
-      {analytics && (
-        <div className="data-summary" style={{ marginTop: '20px', marginBottom: '40px' }}>
-          <h3 style={{ 
-            textAlign: 'center',
-            background: 'linear-gradient(45deg, #800000, #ff6b6b)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontSize: window.innerWidth < 768 ? '1.5rem' : '2rem',
-            fontWeight: 'bold',
-            marginBottom: '20px'
-          }}>
-            Welcome
-          </h3>
-          <div style={{ 
-            width: '100%', 
-            height: window.innerWidth < 480 ? '280px' : window.innerWidth < 768 ? '320px' : '450px',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 50%, #fff5f5 100%)',
-            borderRadius: window.innerWidth < 768 ? '12px' : '16px',
-            padding: window.innerWidth < 768 ? '15px' : '20px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 16px rgba(128,0,0,0.08)',
-            marginBottom: '30px',
-            border: '1px solid rgba(128, 0, 0, 0.1)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            {/* Decorative elements - smaller on mobile */}
-            <div style={{
-              position: 'absolute',
-              top: window.innerWidth < 768 ? '-30px' : '-50px',
-              right: window.innerWidth < 768 ? '-30px' : '-50px',
-              width: window.innerWidth < 768 ? '60px' : '100px',
-              height: window.innerWidth < 768 ? '60px' : '100px',
-              background: 'radial-gradient(circle, rgba(255,107,107,0.1) 0%, transparent 70%)',
-              borderRadius: '50%'
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: window.innerWidth < 768 ? '-20px' : '-30px',
-              left: window.innerWidth < 768 ? '-20px' : '-30px',
-              width: window.innerWidth < 768 ? '40px' : '60px',
-              height: window.innerWidth < 768 ? '40px' : '60px',
-              background: 'radial-gradient(circle, rgba(128,0,0,0.08) 0%, transparent 70%)',
-              borderRadius: '50%'
-            }} />
-            
-            {getAnimatedTripsOption() && (
-              <ReactECharts 
-                option={getAnimatedTripsOption()!}
-                style={{ height: '100%', width: '100%', position: 'relative', zIndex: 1 }}
-                opts={{ 
-                  renderer: 'canvas', 
-                  devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2), // Limit pixel ratio for performance
-                  width: 'auto',
-                  height: 'auto'
-                }}
-                notMerge={false}
-                lazyUpdate={false}
-                shouldSetOption={(prevProps: any, nextProps: any) => {
-                  return prevProps.option !== nextProps.option;
-                }}
+      <section id="overview" className="atlas-hero">
+        <div className="atlas-shell py-14 sm:py-16">
+          <div className="flex flex-wrap gap-2">
+            <Badge>UChicago / Hyde Park</Badge>
+            <Badge variant="outline">{archiveRange}</Badge>
+            {period.mode !== 'all' ? <Badge variant="outline">{slice.label}</Badge> : null}
+          </div>
+          <h1 className="mt-7 max-w-3xl text-[2.65rem] font-semibold leading-[0.98] tracking-[-0.055em] text-foreground sm:text-6xl">
+            Thirteen years of campus movement.
+          </h1>
+          <p className="atlas-lede mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+            Jump to a section below. Campus pulse is the main chart: click a year, a month, or a
+            day and it stays put and zooms with you. Station and hour rankings stay year-scoped.
+          </p>
+          <div className="atlas-kicker mt-8 flex items-center gap-3 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="h-px w-10 bg-primary" />
+            Official Divvy trip archives
+          </div>
+
+          <div className="mt-10">
+            <PeriodControls analytics={analytics} period={period} onChange={setPeriod}>
+              <Card id="pulse" className="scroll-mt-[calc(var(--nav-height)+3.4rem)]">
+                <CardHeader>
+                  <CardTitle>{pulseTitle}</CardTitle>
+                  <CardDescription>{pulseDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="px-2 pb-5 pt-0 sm:px-5">
+                  <CampusPulseChart
+                    key={`${pulseGrain}-${slice.label}`}
+                    data={pulseRows}
+                    grain={pulseGrain}
+                    selectedKey={period.mode === 'day' ? period.date : null}
+                    brushStartIndex={slice.brushStartIndex}
+                    brushEndIndex={slice.brushEndIndex}
+                    showBrush={period.mode === 'all'}
+                    metric={pulseMetric}
+                    onMetricChange={setPulseMetric}
+                    onPointSelect={(key) => {
+                      if (pulseGrain === 'day' && period.mode !== 'all' && period.mode !== 'year') {
+                        if (period.mode === 'day' && period.date === key) {
+                          setPeriod({ mode: 'month', year: period.year, month: period.month })
+                          return
+                        }
+                        setPeriod({
+                          mode: 'day',
+                          year: period.year,
+                          month: period.month,
+                          date: key,
+                        })
+                        return
+                      }
+                      if (/^\d{4}-\d{2}$/.test(key)) {
+                        setPeriod({ mode: 'month', year: Number(key.slice(0, 4)), month: key })
+                      }
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </PeriodControls>
+          </div>
+
+          <p className="mt-4 font-mono text-xs text-muted-foreground" aria-live="polite">
+            Showing {slice.label}
+            {period.mode !== 'all' ? ` · ${periodRange}` : ''}
+          </p>
+
+          <div className="atlas-stagger mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric
+              label="Clean trips"
+              value={summary.trips.toLocaleString()}
+              detail={`${summary.trips_per_active_day || '—'} per active day · ${summary.active_days || '—'} days`}
+            />
+            <Metric
+              label="Member share"
+              value={`${summary.member_share.toFixed(1)}%`}
+              detail={`${summary.member.toLocaleString()} members · ${summary.casual.toLocaleString()} casual`}
+            />
+            <Metric
+              label="Average / median"
+              value={`${summary.avg_duration_minutes.toFixed(1)} / ${summary.median_duration_minutes.toFixed(1)} min`}
+              detail={`${summary.total_duration_hours.toLocaleString()} total hours · p90 ${summary.p90_duration_minutes.toFixed(1)} min`}
+            />
+            <Metric
+              label="Est. straight-line miles"
+              value={formatMiles(summary.estimated_miles_total)}
+              detail={
+                summary.estimated_miles_trip_coverage > 0
+                  ? `Avg ${summary.estimated_miles_avg?.toFixed(2) ?? '—'} mi · ${summary.estimated_miles_trip_coverage}% of trips have coords`
+                  : 'Coords unavailable for this period'
+              }
+            />
+          </div>
+
+          <div className="atlas-stagger mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric
+              label="Named stations"
+              value={summary.total_stations.toLocaleString()}
+              detail={`${summary.stationless_starts.toLocaleString()} stationless starts`}
+            />
+            <Metric
+              label="Observed routes"
+              value={summary.unique_routes.toLocaleString()}
+              detail={showDaily ? `Named pairs in ${period.year}` : 'Named origin–destination pairs'}
+            />
+            <Metric
+              label="After-dark share"
+              value={`${summary.after_dark_share.toFixed(1)}%`}
+              detail={`${summary.after_dark_trips.toLocaleString()} trips starting at 9 pm or later`}
+            />
+            {selectedDay && selectedDay.temp_mean_f != null ? (
+              <Metric
+                label="That day's weather"
+                value={`${selectedDay.temp_mean_f.toFixed(0)}°F`}
+                detail={
+                  selectedDay.precip_in == null
+                    ? 'Hyde Park daily mean from Open-Meteo'
+                    : `${selectedDay.precip_in.toFixed(2)}" precip`
+                }
+              />
+            ) : (
+              <Metric
+                label="Electric share"
+                value={
+                  summary.electric_share_among_typed == null
+                    ? '—'
+                    : `${summary.electric_share_among_typed.toFixed(0)}%`
+                }
+                detail={
+                  summary.classic + summary.electric > 0
+                    ? `${summary.electric.toLocaleString()} electric · ${summary.classic.toLocaleString()} classic`
+                    : `${summary.not_published.toLocaleString()} rides without published bike type`
+                }
               />
             )}
           </div>
-        </div>
-      )}
 
-      <section className="project-section">
-        <h2>Introduction</h2>
-        <p>
-          I got curious about where all the Divvy bikes went late at night, so I decided to compile
-          some stats for these bikes around the UChicago and Hyde park area...
-        </p>
-        <br/>
-        <p> For those who don't know what Divvy is, it's a public bike-sharing program in Chicago and nearby suburbs.
-          You can rent a bike from one station and return it to another making it a quick and 
-          convenient way to get around the city or commute to nearby areas.
-          It's similar to the Citi Bikes in New York City.
-          Both of these programs are operated by Lyft.
-        </p>
-        <br/>
-        <p>
-          Before you scroll down for the actual stats, I want to give a quick rundown of where the data has come from. The data
-          is open source from the divvy website and I essentially just took the data and filtered it in
-          to this zone shown below:
-        </p>
-        <div className="centered-image responsive-image">
-          <img
-            src={mapZoneImage}
-            alt="Divvy bikes zone map"
-            className="map-image"
-          />
-          <p>
-            Since the raw data contained slight variations in latitude and longitude coordinates for the same station locations, 
-            I cleaned and standardized the data by averaging these coordinates to create 20 distinct lat/lng for station locations. 
-            Using this, I updated the large divvy data tables and then 
-            started analyzing the quick stats and cool trends. I didn't want to be super intricate with all of the dates, 
-            so I kept the data between October 2024 and May 2025.</p>
-          <br/>
-          <p>
-            <strong>Enjoy the Divvy stats of the 2024-2025 school year!</strong>
-          </p>
-        </div>
-      </section>
-
-      <section className="project-section">
-        <h2>Analytics Dashboard</h2>
-        <h3 className="subtitle">Academic Year (2024 Oct. - 2025 May)</h3>
-        
-        {error && (
-          <div className="error-message" style={{
-            backgroundColor: '#ffebee',
-            border: '1px solid #f44336',
-            borderRadius: '4px',
-            padding: '12px',
-            color: '#c62828',
-            marginBottom: '20px'
-          }}>
-            ⚠️ Error loading data: {error}
-          </div>
-        )}
-        
-        {loading && (
-          <div className="loading" style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#666',
-            fontSize: '16px'
-          }}>
-            📈 Loading analytics data...
-          </div>
-        )}
-
-        {analytics && (
-          <>
-            {/* Quick Stats */}
-            <div className="data-summary">
-              <h3>Quick Stats</h3>
-              <div className="stats-grid responsive-stats-grid">
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {analytics.total_trips?.[0]
-                      ? Number(Object.values(analytics.total_trips[0])[0]).toLocaleString()
-                      : 'N/A'}
-                  </span>
-                  <span className="stat-label">Total Trips</span>
+          {analytics.forecast.predicted_trips != null ? (
+            <Card className="mt-8 border-primary/25 bg-card/90">
+              <CardHeader>
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles className="size-4" aria-hidden="true" />
+                  <span className="font-mono text-xs uppercase tracking-wider">Next archive month</span>
                 </div>
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {analytics.total_stations?.[0]
-                      ? Number(Object.values(analytics.total_stations[0])[0])
-                      : 'N/A'}
-                  </span>
-                  <span className="stat-label">Total Stations</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {analytics.total_distance?.[0]
-                      ? Math.round(Number(Object.values(analytics.total_distance[0])[0])).toLocaleString()
-                      : 'N/A'}
-                  </span>
-                  <span className="stat-label">Total Distance (miles)</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {analytics.total_time?.[0]
-                      ? Math.round(Number(Object.values(analytics.total_time[0])[1])).toLocaleString()
-                      : 'N/A'}
-                  </span>
-                  <span className="stat-label">Total Duration (Hours)</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {analytics.trips_not_at_stations?.[0]
-                      ? Number(Object.values(analytics.trips_not_at_stations[0])[1]).toLocaleString()
-                      : 'N/A'}
-                  </span>
-                  <span className="stat-label">Trips started not at a station</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">
-                    304
-                  </span>
-                  <span className="stat-label">Unique Station Routes</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Charts Grid */}
-            <div className="charts-grid responsive-charts-grid">
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Top Start Stations</h3>
-                  <select 
-                    value={startStationsView} 
-                    onChange={(e) => setStartStationsView(e.target.value as 'all_day' | 'after_9pm')}
-                    className="chart-type-selector"
-                  >
-                    <option value="all_day">All Day</option>
-                    <option value="after_9pm">After 9 PM</option>
-                  </select>
-                </div>
-                <div>
-                  {startStationsView === 'all_day' ? (
-                    getTopStartStationsChartData() && (
-                      <Bar data={getTopStartStationsChartData()!} options={getResponsiveBarOptions()} />
-                    )
-                  ) : (
-                    getStartStationsAfter9pmData() && (
-                      <Bar data={getStartStationsAfter9pmData()!} options={getResponsiveBarOptions()} />
-                    )
-                  )}
-                </div>
-                <div className="chart-note-style">
-                  📍 Regenstein Library, Renee Granville-Grossman Residential Commons, and Ratner are top 3.
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Top End Stations</h3>
-                  <select 
-                    value={endStationsView} 
-                    onChange={(e) => setEndStationsView(e.target.value as 'all_day' | 'after_9pm')}
-                    className="chart-type-selector"
-                  >
-                    <option value="all_day">All Day</option>
-                    <option value="after_9pm">After 9 PM</option>
-                  </select>
-                </div>
-                <div>
-                  {endStationsView === 'all_day' ? (
-                    getTopEndStationsChartData() && (
-                      <Bar data={getTopEndStationsChartData()!} options={getResponsiveBarOptions()} />
-                    )
-                  ) : (
-                    getEndStationsAfter9pmData() && (
-                      <Bar data={getEndStationsAfter9pmData()!} options={getResponsiveBarOptions()} />
-                    )
-                  )}
-                </div>
-                <div className="chart-note-style">
-                  {endStationsView === 'all_day' 
-                    ? '📍 Regenstein Library, Renee-Granville-Grossman Residential Commons, and Ratner are top 3.'
-                    : '📍 Renee Granville-Grossman Residential Commons, Regenstein Library, and IHouse are top 3.'
-                  }
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Usage During the Day</h3>
-                  <select 
-                    value={hourlyView} 
-                    onChange={(e) => setHourlyView(e.target.value as 'by_period' | 'by_hour')}
-                    className="chart-type-selector"
-                  >
-                    <option value="by_period">By Time Period</option>
-                    <option value="by_hour">By Hour</option>
-                  </select>
-                </div>
-                <div>
-                  {hourlyView === 'by_period' ? (
-                    <>
-                      <p style={{ fontSize: windowSize.width < 768 ? '12px' : '14px', marginBottom: '10px' }}>
-                        Hours: Overnight [0-5], Morning [6-11], Afternoon [12 - 17], Evening [18-23]
-                      </p>
-                      {getHourlyTripsData() && <Line data={getHourlyTripsData()!} options={lineOptions} />}
-                    </>
-                  ) : (
-                    getHourlyTimeData() && <Line data={getHourlyTimeData()!} options={lineOptions} />
-                  )}
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <div className="chart-header">
-                  <h3>Monthly Trip Analysis</h3>
-                  <select 
-                    value={monthlyView} 
-                    onChange={(e) => setMonthlyView(e.target.value as 'total_trips' | 'user_distribution' | 'bike_types' | 'avg_duration')}
-                    className="chart-type-selector"
-                  >
-                    <option value="total_trips">Total Trips</option>
-                    <option value="user_distribution">User Distribution</option>
-                    <option value="bike_types">Bike Types</option>
-                    <option value="avg_duration">Average Duration</option>
-                  </select>
-                </div>
-                <div>
-                  {monthlyView === 'total_trips' ? (
-                    getMonthlyTripsData() && <Bar data={getMonthlyTripsData()!} options={getResponsiveBarOptions()} />
-                  ) : monthlyView === 'user_distribution' ? (
-                    getMemberDistributionData() && <Bar data={getMemberDistributionData()!} options={getResponsiveBarOptions()} />
-                  ) : monthlyView === 'bike_types' ? (
-                    getMonthlyBikeTypesData() && <Bar data={getMonthlyBikeTypesData()!} options={getResponsiveBarOptions()} />
-                  ) : (
-                    getMonthAvgDurationData() && <Bar data={getMonthAvgDurationData()!} options={getResponsiveBarOptions()} />
-                  )}
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <h3>Most Popular Days of the Week</h3>
-                <div>
-                  {getPopularDaysData() && <Line data={getPopularDaysData()!} options={lineOptions} />}
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <h3>Average Trip Duration by User Type</h3>
-                <div>
-                  {getDurationComparisonData() && (
-                    <Bar data={getDurationComparisonData()!} options={getResponsiveBarOptions()} />
-                  )}
-                </div>
-              </div>
-
-              <div className="chart-container">
-                <h3>Bike Type Usage</h3>
-                <div>
-                  {getBikeTypesData() && (
-                    <Doughnut data={getBikeTypesData()!} options={doughnutOptions} />
-                  )}
-                </div>
-              </div>
-              
-              <div className="chart-container">
-                <h3>Most Common Routes</h3>
-                <div>
-                  {getCommonRoutesData() && (
-                    <Bar data={getCommonRoutesData()!} options={getResponsiveBarOptions()} />
-                  )}
-                </div>
-                <p className="chart-note-style">Top 10 routes shown.</p>
-              </div>
-            </div>
-            <div className="tableau-section">
-              <h2>See It Visually</h2>
-              <p>Explore the Tableau visualizations with real map views.</p>
-              
-              {/* animated tableau */}
-              <div className="tableau-container responsive-tableau-large">
-                <h3 className="tableau-title"> Start and End Stations shown day by day, every 4 hours.</h3>
-                <iframe
-                  src="https://public.tableau.com/views/DivvyTripsStartandEndStations/DivvyTripsUChicagoSTAEND?:embed=yes&:display_count=yes&:showVizHome=no&:toolbar=yes&:scrollbars=no"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  allowFullScreen
-                  title="Divvy Trips Start and End Stations"
-                  scrolling="no"
+                <CardTitle>
+                  Forecast for {analytics.forecast.target_month}
+                </CardTitle>
+                <CardDescription>
+                  Built for the gap before the next Divvy monthly release (data currently through{' '}
+                  {analytics.forecast.based_on_latest_trip}). Score it when that archive imports.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                <Metric
+                  label="Predicted trips"
+                  value={analytics.forecast.predicted_trips.toLocaleString()}
+                  detail={`${analytics.forecast.low?.toLocaleString()}–${analytics.forecast.high?.toLocaleString()} uncertainty band`}
                 />
-              </div>
-              
-              {/* Side by side tableau visualizations */}
-              <div className="tableau-row responsive-tableau-row">
-                {/* start station viz */}
-                <div className="tableau-container responsive-tableau-half">
-                  <iframe
-                    src="https://public.tableau.com/views/DivvyTripsStartStationUsageUChicago/StartStationCount?:embed=yes&:display_count=yes&:showVizHome=no&:toolbar=yes"
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    allowFullScreen
-                    title="Divvy Start Station Usage"
-                  />
-                </div>
-                
-                {/* end station viz */}
-                <div className="tableau-container responsive-tableau-half">
-                  <iframe
-                    src="https://public.tableau.com/views/DivvyTripsEndStationUsageUChicago/EndStationCount?:embed=yes&:display_count=yes&:showVizHome=no&:toolbar=yes"
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    allowFullScreen
-                    title="Divvy End Station Usage"
-                  />
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+                <Metric
+                  label="Per day"
+                  value={analytics.forecast.predicted_trips_per_day?.toLocaleString() ?? '—'}
+                  detail="Seasonal + YoY + trend + weather climatology"
+                />
+                <Metric
+                  label="Backtest MAPE"
+                  value={analytics.forecast.backtest.mape == null ? '—' : `${analytics.forecast.backtest.mape}%`}
+                  detail={`MAE ${analytics.forecast.backtest.mae_trips?.toLocaleString() ?? '—'} over ${analytics.forecast.backtest.months_scored} months`}
+                />
+                <Metric
+                  label="Weather assumption"
+                  value={
+                    analytics.forecast.components.expected_temp_f == null
+                      ? '—'
+                      : `${analytics.forecast.components.expected_temp_f.toFixed(0)}°F`
+                  }
+                  detail={
+                    analytics.forecast.components.expected_precip_in == null
+                      ? 'Climatology for this calendar month'
+                      : `${analytics.forecast.components.expected_precip_in.toFixed(1)}" typical precip`
+                  }
+                />
+              </CardContent>
+              <p className="border-t border-border px-6 py-4 font-mono text-xs text-muted-foreground">
+                Learn the ML variant: <span className="text-foreground">npm run divvy:forecast-learn</span>
+                {' · '}
+                {analytics.forecast.method}
+              </p>
+            </Card>
+          ) : null}
+        </div>
       </section>
 
-      <section className="project-section"> 
-        <h2>My Thoughts</h2>
-        <div style={{ textAlign: 'left' }}>
-          <p> 
-            I learned a lot about the trends with the Divvy Bikes around the UChicago area. 
-            Considering that I use the divvy bikes a lot (203 rides, 96 miles, 
-            14 hours 16 minutes, and $414.66 saved), doing this project was a pretty fun thing to do! 
-          </p>
-          <br/>
-          <p>Here are some things that I learned:</p>
-          <br/>
-          <p>
-            <strong>Residential Dorms are quite popular...</strong><br/>
-            I think it was super interesting to see the amount of people using the 
-            bikes at Renee Granville-Grossman Residential Commons (SOUTH) with 14,665 trips started and 14,200 trips ended (about 130 uses per day!). 
-            Based on the most common routes data, most of these routes consisted of South to the Reg Library and back, as well as to Ratner and back.
-            In addition, the bikes at the International House(IHOUSE) was also a pretty popular destination, 
-            although they had less trips because fewer students live there. 
-            This raises a question: Should Woodlawn have a station? Definitely. Considering that 
-            it is one of the most occupied dorms and also has a very decent dining hall, the numbers at Woodlawn, if they had a station,
-            I think they would have the most trips overall.
-          </p>
-          <br/>
-          <p>
-            <strong> Regenstein Dominance</strong><br/>
-            Now it's no doubt that the Reg station has the most amount of uses considering 
-            its station size and it's centrality around the campus but I was suprised
-            too see how much this station is used. It had around 15,000 trips started and ended being the
-            number 1 station for both start and end stations. Most people definitely use it for 
-            its proximinity to the quad and the library, but also because of its availability in terms of bikes and open docks.
-          </p>
-          <br/>
-          <p>
-            <strong> So where do all the bikes go late at night?</strong><br/>
-            Everytime I come out of the Reg Library late at night, there are always no bikes. Now... I get a sense of where they go.
-            From the after 9 pm charts, it seems that the dorms are the popular destinations.
-            Renee Granville-Grossman Residential topped the end station count by a large margin with about 1,600 trips being parked after 9 pm.
-            Excluding the Reg station, IHouse was 3rd with around 600 trips, Ratner was 4th with around 600 trips, and the station
-            (Kimbark Ave & 53rd) was 5th with around 500 trips. These stations are near apartments or dorms which makes 
-            sense as students/staff are heading home for the night.
-            I'm still suprised that the Reg station is still 2nd on the end stations chart, but I think that just comes 
-            with it being a popular station.
-          </p>
-          <br/>
-          <p>
-            <strong> October topped it all</strong><br/>
-            October was the month for Divvy's around Uchicago and Hyde park with around 26,000 trips.
-            Weather does seem to play a huge role in the amount of trips taken as we can see the numbers decreasing during the winter quarter, 
-            and gradually increasing for the spring quarter. Maybe I should look more into the weather averages with this data. 
-            I was a little suprised how May didn't have higher numbers considering the weather was quite nice.
-          </p>
-          <br/>
-          <p>
-            <strong> Member vs. Casual Demographics</strong><br/>
-            There was a consistent ~75-80% member usage, while around a 20-25% casual usage. 
-            This definitely shows that people using the Divvy Bikes are those that live here 
-            such as students/staff with regular access, while the casual users are for 
-            those using it occasionally. I was suprised by the large difference in average trip duration between
-            Member and Casual users. This suggests that casual users tend to take longer, most likely exploratory trips, 
-            while members use the bikes for efficient, short-distance transportation 
-            between familiar locations like dorms, classes, and dining halls.
-          </p>
-          <br/>
-          <p>
-            <strong> E-bike or classics?</strong><br/>
-              E-bikes are really popular around the area especially with its convenience of not being able to park at a station. 
-              I couldn't get the exact coordinates of those that parked outside of the station, because the data didn't seem right (a majority of the end-station lat/lng were the same numbers...).
-              What's fascinating is the seasonal shift in e-bike preference. While October had the highest amount of trips, May actually 
-              had the highest amount of e-bike trips with around 9,000 trips. From a cost persepctive, e-bikes do cost more per ride,
-              but as winter/spring quarter went by, the usage of e-bikes was almost consistently the same as the classic bikes.
-              I wonder what caused this shift. Is it the weather? Are people more in a rush? Did people finally realize the thrill of an e-bike?
-              I'm excited for next school year's Divvy stats to see if this trend continues.
+      <section id="calendar" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="Calendar"
+          title="UChicago College dates, 2025–26"
+          description="These are the official instruction, break, exam, and convocation windows shaded on Campus pulse. Click a row to jump the pulse chart to that span."
+        />
+        <Card className="mt-9">
+          <CardContent className="pt-2">
+            <AcademicCalendar onSelectPeriod={setPeriod} />
+          </CardContent>
+        </Card>
+      </section>
 
+      <section id="rhythm" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="Rhythm"
+          title="When Hyde Park rides"
+          description={
+            period.mode === 'all'
+              ? 'The daily rhythm is remarkably legible: class schedules, commute windows, weather, and the academic calendar all leave a trace.'
+              : `Hour and weekday patterns for ${period.year}${slice.rankingsScopedToYear ? ' (year-level activity; month and day chips affect volume KPIs)' : ''}.`
+          }
+        />
+        <div className="mt-9 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Trips by hour and weekday</CardTitle>
+              <CardDescription>
+                {period.mode === 'all'
+                  ? 'Switch the grouping without losing the full historical population.'
+                  : `Scoped to ${period.year}.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ActivityPatternsChart
+                key={activityDefaultScope}
+                series={activitySeries}
+                years={years}
+                defaultScope={activityDefaultScope}
+              />
+            </CardContent>
+          </Card>
+          <Card className="bg-primary text-primary-foreground">
+            <CardHeader>
+              <Clock3 className="size-6" aria-hidden="true" />
+              <CardTitle className="text-primary-foreground">
+                {period.mode === 'day' ? 'This day' : period.mode === 'month' ? 'This month' : 'The busiest month'}
+              </CardTitle>
+              <CardDescription className="text-primary-foreground/70">
+                {period.mode === 'all'
+                  ? 'A single month at the peak of the archive.'
+                  : `Peak inside ${slice.label}.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-4xl font-medium">
+                {period.mode === 'day'
+                  ? summary.trips.toLocaleString()
+                  : findings.peakMonth?.trips.toLocaleString() ?? '—'}
+              </div>
+              <p className="mt-2 text-sm text-primary-foreground/75">
+                trips {period.mode === 'day'
+                  ? `on ${formatDay(period.date)}`
+                  : `in ${findings.peakMonth ? formatMonth(`${findings.peakMonth.month}-01`) : '—'}`}
+              </p>
+              <p className="mt-8 max-w-sm text-base leading-7 text-primary-foreground/85">
+                Member hours in this view: {(summary.member_duration_hours ?? 0).toLocaleString()}; casual
+                hours: {(summary.casual_duration_hours ?? 0).toLocaleString()}.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
+      <section id="covid" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="COVID"
+          title="Pre-COVID vs post-COVID campus rhythm"
+          description={analytics.covid.definition.note}
+        />
+        <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric
+            label="Pre trips / day"
+            value={covidPre.trips_per_active_day.toLocaleString()}
+            detail={`${covidPre.trips.toLocaleString()} trips · before ${analytics.covid.definition.pre_end}`}
+          />
+          <Metric
+            label="Post trips / day"
+            value={covidPost.trips_per_active_day.toLocaleString()}
+            detail={`${covidPost.trips.toLocaleString()} trips · from ${analytics.covid.definition.post_start}`}
+          />
+          <Metric
+            label="Member share"
+            value={`${covidPre.member_share.toFixed(0)}% → ${covidPost.member_share.toFixed(0)}%`}
+            detail="Pre → post membership mix"
+          />
+          <Metric
+            label="After-dark share"
+            value={`${covidPre.after_dark_share.toFixed(1)}% → ${covidPost.after_dark_share.toFixed(1)}%`}
+            detail="Trips starting at 9 pm or later"
+          />
+        </div>
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Hour-of-day share</CardTitle>
+            <CardDescription>
+              Normalized so each era sums to 100%, making shape differences easier to read than raw volume.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CovidHourCompareChart
+              pre={analytics.covid.pre.weekday_hour}
+              post={analytics.covid.post.weekday_hour}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section id="weather" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="Weather"
+          title="Temperature and rain leave a clear mark"
+          description="Daily Hyde Park weather from Open-Meteo is joined to analysis-ready trip days. Cold and wet days suppress volume; mild mid-60s days are the sweet spot."
+        />
+        <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric
+            label="Dry-day average"
+            value={analytics.weather.precip.dry_avg_trips.toLocaleString()}
+            detail={`< ${analytics.weather.precip.wet_threshold_inches}" precip · ${analytics.weather.precip.dry_days.toLocaleString()} days`}
+          />
+          <Metric
+            label="Wet-day average"
+            value={analytics.weather.precip.wet_avg_trips.toLocaleString()}
+            detail={`${analytics.weather.precip.wet_days.toLocaleString()} days with measurable rain/snow`}
+          />
+          <Metric
+            label="Wet-day drop"
+            value={`${wetDrop.toFixed(0)}%`}
+            detail="Fewer trips on wet days vs dry days"
+          />
+          <Metric
+            label="Weather days joined"
+            value={analytics.weather.days_joined.toLocaleString()}
+            detail={analytics.weather.source}
+          />
+        </div>
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-primary">
+                <CloudRain className="size-4" aria-hidden="true" />
+                <span className="font-mono text-xs uppercase tracking-wider">Temperature bins</span>
+              </div>
+              <CardTitle>Average trips by daily mean temperature</CardTitle>
+              <CardDescription>
+                Cold-to-warm bins of Hyde Park days. Labels are trips per day in that bin.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WeatherTempChart data={analytics.weather.by_temperature_bin} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Temperature vs trips, month by month</CardTitle>
+              <CardDescription>
+                Each point is one month. The dashed line is the linear trend; color is season.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WeatherCorrelationChart data={analytics.weather.monthly} />
+            </CardContent>
+          </Card>
+        </div>
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>A typical year: trips follow the temperature curve</CardTitle>
+            <CardDescription>
+              January–December averages across the archive. Bars are trips per day; the line is mean temperature.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WeatherSeasonChart data={analytics.weather.monthly} />
+          </CardContent>
+        </Card>
+        <p className="mt-4 font-mono text-xs text-muted-foreground">
+          {analytics.weather.attribution}
+        </p>
+      </section>
+
+      <section id="map" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="Map"
+          title="The stations that organize the neighborhood"
+          description="Watch a few high-activity days unfold station to station, or browse the historical station overview. Toggle live GBFS for current bike and dock inventory."
+        />
+        <div className="mt-9">
+          <StationMap
+            stations={slice.stations}
+            archiveStations={analytics.stations}
+            demoDays={analytics.demo_days}
+            bounds={analytics.map_bounds}
+            periodLabel={slice.label}
+          />
+          <p className="mt-3 font-mono text-xs text-muted-foreground">
+            Replay moves between published station centroids. Off-station e-bike locks and coarse GPS are omitted.
           </p>
         </div>
-        <p>
-        <br/>
-          <u>I hope you enjoyed the stats and visuals!</u>
-          <br/>
-          If you have any questions or comments, feel free to reach out to me at
-          <a href="mailto:emwu@uchicago.edu"> {''}
-             emwu@uchicago.edu
-          </a>
-        </p>
+        <div className="mt-9 grid gap-6 xl:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-primary">
+                <MapPin className="size-4" aria-hidden="true" />
+                <span className="font-mono text-xs uppercase tracking-wider">Origins</span>
+              </div>
+              <CardTitle>Top start stations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StationRankingChart
+                allDay={slice.top_start_stations}
+                afterDark={slice.after_dark_start_stations}
+                mode="start"
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-primary">
+                <Moon className="size-4" aria-hidden="true" />
+                <span className="font-mono text-xs uppercase tracking-wider">Destinations</span>
+              </div>
+              <CardTitle>Top end stations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StationRankingChart
+                allDay={slice.top_end_stations}
+                afterDark={slice.after_dark_end_stations}
+                mode="end"
+              />
+            </CardContent>
+          </Card>
+        </div>
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-primary">
+              <Route className="size-4" aria-hidden="true" />
+              <span className="font-mono text-xs uppercase tracking-wider">OD pairs</span>
+            </div>
+            <CardTitle>Most common station-to-station routes</CardTitle>
+            <CardDescription>Same-station loops are excluded so movement between places stays visible.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RoutesChart data={slice.common_routes} />
+          </CardContent>
+        </Card>
+      </section>
 
+      <section id="riders" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="Riders"
+          title="Membership and bikes changed with the system"
+          description="The archive spans two data eras. Bike type was not published before 2020, so the evolution chart begins where the field becomes available."
+        />
+        <div className="mt-9 grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Member and casual share</CardTitle>
+              <CardDescription>
+                {period.mode === 'all' ? 'Share of analysis-ready rides by year.' : `Monthly mix inside ${period.year}.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RiderMixChart data={mixData} mode={mixMode} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Classic and electric bikes</CardTitle>
+              <CardDescription>
+                {period.mode === 'all'
+                  ? 'Published rideable types, 2020 onward.'
+                  : `Published types for ${period.year}.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BikeEvolutionChart data={mixData} mode={mixMode} />
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Trip duration</CardTitle>
+              <CardDescription>Average and median minutes by membership type.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DurationByRiderChart data={slice.member_summary} />
+            </CardContent>
+          </Card>
+          <Card className="border-primary/20 bg-accent">
+            <CardHeader>
+              <Bike className="size-6 text-accent-foreground" aria-hidden="true" />
+              <CardTitle>{slice.label}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="font-mono text-4xl font-medium text-accent-foreground">
+                {findings.electricShare > 0 ? `${findings.electricShare.toFixed(0)}%` : '—'}
+              </div>
+              <p className="mt-2 text-sm text-accent-foreground/75">
+                electric share among rides with a published bike type
+              </p>
+              <p className="mt-8 text-base leading-7 text-accent-foreground/85">
+                Members account for {findings.memberShare.toFixed(1)}% of cleaned trips in this view.
+                Station metadata is complete for {summary.station_metadata_complete_share.toFixed(0)}%
+                of trips; coordinates for {summary.coordinate_metadata_complete_share.toFixed(0)}%.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section id="method" className="atlas-section atlas-shell">
+        <SectionIntro
+          eyebrow="Method"
+          title="A small zone, treated carefully"
+          description="Every chart uses the same reproducible analysis surface. Estimated miles are crow-flies distances between published endpoints—not routed path length."
+        />
+        <div className="mt-9 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <img
+              src={mapZoneImage}
+              alt="Map showing the UChicago and Hyde Park Divvy study boundary"
+              className="h-full min-h-80 w-full object-cover"
+            />
+          </div>
+          <Card>
+            <CardHeader>
+              <Database className="size-6 text-primary" aria-hidden="true" />
+              <CardTitle>Analysis contract</CardTitle>
+              <CardDescription>Transparent enough to rerun when the next monthly archive lands.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-5 sm:grid-cols-2">
+              {[
+                ['Source', '94 official Divvy S3 archives'],
+                ['Zone', 'Both trip endpoints inside the configured Hyde Park boundary'],
+                ['Duration', '15 seconds through 24 hours'],
+                ['Time', 'Chicago local wall-clock timestamps'],
+                ['Distance', 'Haversine miles only when start and end coordinates exist'],
+                ['Weather', 'Open-Meteo daily temps/precip joined to trip days'],
+                ['Calendar', 'UChicago 2025–26 instruction, breaks, and exams on the pulse chart'],
+                ['Forecast', 'Next archive month: seasonal + YoY + weather climatology'],
+                ['Map layers', 'Station overview, curated day replay, optional live GBFS'],
+                ['Refresh', 'Import → validate → static batch analyze'],
+              ].map(([label, value]) => (
+                <div key={label} className="border-t border-border pt-4">
+                  <div className="font-mono text-xs uppercase tracking-wider text-primary">{label}</div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{value}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section id="findings" className="atlas-section atlas-shell pb-28">
+        <SectionIntro
+          eyebrow="Findings"
+          title="A few durable findings"
+          description="These statements recalculate for the selected period, so they move with the archive and your year, month, or day filter."
+        />
+        <div className="mt-9 grid gap-4 md:grid-cols-3">
+          {[
+            {
+              label: 'Network anchor',
+              value: findings.topStart?.station ?? '—',
+              detail: `${findings.topStart?.trips.toLocaleString() ?? 0} recorded departures`,
+            },
+            {
+              label: 'After-dark destination',
+              value: findings.nightEnd?.station ?? '—',
+              detail: `${findings.nightEnd?.trips.toLocaleString() ?? 0} arrivals after 9 pm`,
+            },
+            {
+              label: period.mode === 'day' ? 'Selected day' : period.mode === 'month' ? 'Selected month' : 'Peak month',
+              value: period.mode === 'day'
+                ? formatDay(period.date)
+                : findings.peakMonth
+                  ? formatMonth(`${findings.peakMonth.month}-01`)
+                  : '—',
+              detail: `${(period.mode === 'day' ? summary.trips : findings.peakMonth?.trips ?? 0).toLocaleString()} cleaned trips`,
+            },
+          ].map((finding) => (
+            <Card key={finding.label}>
+              <CardHeader>
+                <p className="font-mono text-xs uppercase tracking-wider text-primary">{finding.label}</p>
+                <CardTitle className="text-xl leading-snug">{finding.value}</CardTitle>
+                <CardDescription>{finding.detail}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+        <p className="mt-8 font-mono text-xs text-muted-foreground">
+          Generated {new Date(analytics.generated_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+        </p>
       </section>
     </main>
-  );
-};
-
-export default DivvyProject;
+  )
+}

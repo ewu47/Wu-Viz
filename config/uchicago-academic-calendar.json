@@ -1,0 +1,84 @@
+{
+  "version": "uchicago-college-2025-2026",
+  "source": "https://events.uchicago.edu/academic/calendar/year.php",
+  "note": "Foundation for Campus pulse academic overlay. Extend year-by-year; do not invent dates.",
+  "terms": [
+    {
+      "id": "2025-summer",
+      "label": "Summer Quarter 2025",
+      "start": "2025-06-16",
+      "end": "2025-08-23",
+      "kind": "instruction"
+    },
+    {
+      "id": "2025-september-term",
+      "label": "September Term 2025",
+      "start": "2025-08-25",
+      "end": "2025-09-12",
+      "kind": "instruction"
+    },
+    {
+      "id": "2025-autumn",
+      "label": "Autumn Quarter 2025",
+      "start": "2025-09-29",
+      "end": "2025-12-13",
+      "kind": "instruction"
+    },
+    {
+      "id": "2025-thanksgiving",
+      "label": "Thanksgiving Break",
+      "start": "2025-11-24",
+      "end": "2025-11-28",
+      "kind": "break"
+    },
+    {
+      "id": "2025-autumn-finals",
+      "label": "Autumn Finals",
+      "start": "2025-12-09",
+      "end": "2025-12-12",
+      "kind": "exams"
+    },
+    {
+      "id": "2026-winter",
+      "label": "Winter Quarter 2026",
+      "start": "2026-01-05",
+      "end": "2026-03-14",
+      "kind": "instruction"
+    },
+    {
+      "id": "2026-winter-finals",
+      "label": "Winter Finals",
+      "start": "2026-03-10",
+      "end": "2026-03-13",
+      "kind": "exams"
+    },
+    {
+      "id": "2026-spring-break",
+      "label": "Spring Break",
+      "start": "2026-03-15",
+      "end": "2026-03-22",
+      "kind": "break"
+    },
+    {
+      "id": "2026-spring",
+      "label": "Spring Quarter 2026",
+      "start": "2026-03-23",
+      "end": "2026-06-06",
+      "kind": "instruction"
+    },
+    {
+      "id": "2026-spring-finals",
+      "label": "Spring Finals",
+      "start": "2026-05-26",
+      "end": "2026-05-29",
+      "kind": "exams"
+    },
+    {
+      "id": "2026-convocation",
+      "label": "Convocation",
+      "start": "2026-06-06",
+      "end": "2026-06-06",
+      "kind": "event"
+    }
+  ]
+}

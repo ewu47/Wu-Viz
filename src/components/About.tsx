@@ -1,17 +1,15 @@
-import React from 'react';
-
-const About: React.FC = () => {
+const About = () => {
   return (
     <section className="about-section">
-      <p>
-        Hello! I'm Eddie Wu, this is just a quick collection of some of some stats/data visualizations that I've made. 
-        It's pretty informal, almost journal-like since it's just for fun.
-      </p>
-      <p>
-        <strong>Enjoy!</strong>
-      </p>
+      <div className="about-card">
+        <p>
+          I’m Eddie Wu. I use statistics to answer the questions that stick around after
+          class, on a bike ride, or while looking at a city map.
+        </p>
+        <p className="about-signoff">This is the notebook—made public.</p>
+      </div>
     </section>
-  );
-};
+  )
+}
 
-export default About;
+export default About

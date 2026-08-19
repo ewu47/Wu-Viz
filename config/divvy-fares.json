@@ -1,0 +1,99 @@
+{
+  "era_start": 2020,
+  "cta_fare": 2.5,
+  "note": "Hyde Park / UChicago walk-up vs member usage fees. Annual dues are not subtracted because trip files have no unique riders. 2020–2021 member e-bikes are treated as included for 45 minutes: Hyde Park sat in Divvy’s original fee-waiver zone south of Pershing until May 2022.",
+  "sources": [
+    "https://chi.streetsblog.org/2020/07/27/e-divvy-bikes-debut-wednesday-equitable-but-complex-pricing-system-announced",
+    "https://chi.streetsblog.org/2020/12/01/sorry-folks-divvy-memberships-and-single-rides-are-about-to-get-a-little-more-expensive",
+    "https://chi.streetsblog.org/2022/06/14/divvys-new-pricing-is-unaffordable-to-many-residents-and-therefore-inequitable",
+    "https://chi.streetsblog.org/2023/03/29/sad-trombone-another-divvy-price-hike-quietly-kicked-in-this-month",
+    "https://blockclubchicago.org/2024/01/08/divvy-fares-are-going-up-in-february/",
+    "https://divvybikes.com/pricing"
+  ],
+  "years": {
+    "2020": {
+      "casual_classic_unlock": 0,
+      "casual_classic_per_min": 0,
+      "casual_classic_block_price": 3,
+      "casual_classic_block_minutes": 30,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.3,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.15,
+      "member_ebike_per_min": 0.15,
+      "member_ebike_included_min": 45
+    },
+    "2021": {
+      "casual_classic_unlock": 0,
+      "casual_classic_per_min": 0,
+      "casual_classic_block_price": 3.3,
+      "casual_classic_block_minutes": 30,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.35,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.15,
+      "member_ebike_per_min": 0.15,
+      "member_ebike_included_min": 45
+    },
+    "2022": {
+      "casual_classic_unlock": 1,
+      "casual_classic_per_min": 0.16,
+      "casual_classic_block_price": 0,
+      "casual_classic_block_minutes": 0,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.39,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.16,
+      "member_ebike_per_min": 0.16,
+      "member_ebike_included_min": 0
+    },
+    "2023": {
+      "casual_classic_unlock": 1,
+      "casual_classic_per_min": 0.17,
+      "casual_classic_block_price": 0,
+      "casual_classic_block_minutes": 0,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.42,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.17,
+      "member_ebike_per_min": 0.17,
+      "member_ebike_included_min": 0
+    },
+    "2024": {
+      "casual_classic_unlock": 1,
+      "casual_classic_per_min": 0.18,
+      "casual_classic_block_price": 0,
+      "casual_classic_block_minutes": 0,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.44,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.18,
+      "member_ebike_per_min": 0.18,
+      "member_ebike_included_min": 0
+    },
+    "2025": {
+      "casual_classic_unlock": 1,
+      "casual_classic_per_min": 0.19,
+      "casual_classic_block_price": 0,
+      "casual_classic_block_minutes": 0,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.44,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.19,
+      "member_ebike_per_min": 0.19,
+      "member_ebike_included_min": 0
+    },
+    "2026": {
+      "casual_classic_unlock": 1,
+      "casual_classic_per_min": 0.2,
+      "casual_classic_block_price": 0,
+      "casual_classic_block_minutes": 0,
+      "casual_ebike_unlock": 1,
+      "casual_ebike_per_min": 0.44,
+      "member_classic_included_min": 45,
+      "member_classic_overtime_per_min": 0.2,
+      "member_ebike_per_min": 0.2,
+      "member_ebike_included_min": 0
+    }
+  }
+}

@@ -3,6 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPool } from './divvy/db.js';
 import { buildNextMonthForecast } from './divvy/forecast-next-month.js';
+import {
+  buildRidershipRollup,
+  memberUsageFareSql,
+  RIDERSHIP_ERA_START,
+  walkupFareSql,
+} from './divvy/fares.js';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const outputPath = path.resolve(directory, '../public/analytics.json');
@@ -415,6 +421,7 @@ async function generateAnalytics() {
       summaryPreCovidResult,
       summaryPostCovidResult,
       dailyTripsResult,
+      ridershipFareResult,
     ] = await Promise.all([
       pool.query(`
         WITH stations AS (
@@ -867,6 +874,28 @@ async function generateAnalytics() {
         WHERE started_at >= $1::timestamp
       `, [COVID_POST_START]),
       pool.query(periodSeriesSelect(`to_char(trip_date, 'YYYY-MM-DD')`, 'date')),
+      pool.query(`
+        SELECT
+          trip_year AS year,
+          to_char(trip_date, 'YYYY-MM') AS month,
+          member_casual AS rider,
+          coalesce(rideable_type, 'not_published') AS bike,
+          count(*)::bigint AS trips,
+          round(sum(duration_seconds)::numeric / 60, 1) AS duration_minutes,
+          round(sum(${walkupFareSql()})::numeric, 2) AS walkup_cost,
+          round(sum(${memberUsageFareSql()})::numeric, 2) AS member_usage_cost,
+          round(sum(
+            CASE
+              WHEN member_casual = 'member'
+              THEN coalesce(${walkupFareSql()}, 0) - ${memberUsageFareSql()}
+              ELSE 0
+            END
+          )::numeric, 2) AS estimated_savings
+        FROM divvy_uchicago_trips_analysis
+        WHERE trip_year >= ${RIDERSHIP_ERA_START}
+        GROUP BY trip_year, to_char(trip_date, 'YYYY-MM'), member_casual, coalesce(rideable_type, 'not_published')
+        ORDER BY year, month, rider, bike
+      `),
     ]);
 
     const monthly = numericRows(monthlyResult.rows, PERIOD_METRIC_FIELDS);
@@ -1024,6 +1053,20 @@ async function generateAnalytics() {
       },
     };
 
+    const ridership = buildRidershipRollup(
+      numericRows(
+        ridershipFareResult.rows.map((row) => ({ ...row, year: Number(row.year) })),
+        new Set([
+          'year',
+          'trips',
+          'duration_minutes',
+          'walkup_cost',
+          'member_usage_cost',
+          'estimated_savings',
+        ]),
+      ),
+    );
+
     const yearlySummaries = numericRows(
       yearlySummaryResult.rows.map((row) => ({ ...row, year: Number(row.year) })),
       new Set([...SUMMARY_NUMERIC_FIELDS, 'year']),
@@ -1067,6 +1110,7 @@ async function generateAnalytics() {
         demo_days: demoDays,
         covid,
         weather,
+        ridership,
         forecast: buildNextMonthForecast(monthly, weather.monthly, globalSummary.latest_trip),
         by_year: byYear,
         map_bounds: { ...MAP_BOUNDS },

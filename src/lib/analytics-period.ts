@@ -5,6 +5,8 @@ import type {
   AnalyticsSummary,
   DailyStat,
   MonthlyStat,
+  RidershipMonth,
+  RidershipYear,
 } from '@/services/api'
 
 const MONTH_LABELS = [
@@ -298,3 +300,67 @@ export function selectAnalyticsSlice(
 }
 
 export { MONTH_LABELS, WEEKDAY_LABELS }
+
+export function selectRidershipSlice(analytics: Analytics, period: AnalyticsPeriod) {
+  const empty = [] as Array<RidershipYear | RidershipMonth>
+  const ridership = analytics.ridership
+  if (!ridership) {
+    return {
+      available: false as const,
+      eraStart: 2020,
+      grain: 'year' as const,
+      series: empty,
+      totals: null,
+      selectedKey: null as string | null,
+      label: '2020–present',
+    }
+  }
+
+  const eraStart = ridership.era_start
+  if (period.mode !== 'all' && period.year < eraStart) {
+    return {
+      available: false as const,
+      eraStart,
+      grain: 'year' as const,
+      series: empty,
+      totals: null,
+      selectedKey: null as string | null,
+      label: String(period.year),
+    }
+  }
+
+  if (period.mode === 'all') {
+    return {
+      available: true as const,
+      eraStart,
+      grain: 'year' as const,
+      series: ridership.by_year,
+      totals: ridership.totals,
+      selectedKey: null as string | null,
+      label: `${eraStart}–present`,
+    }
+  }
+
+  const yearMonthly = ridership.monthly.filter((row) => row.year === period.year)
+  if (period.mode === 'year') {
+    return {
+      available: true as const,
+      eraStart,
+      grain: 'month' as const,
+      series: yearMonthly,
+      totals: ridership.by_year.find((row) => row.year === period.year) ?? null,
+      selectedKey: null as string | null,
+      label: String(period.year),
+    }
+  }
+
+  return {
+    available: true as const,
+    eraStart,
+    grain: 'month' as const,
+    series: yearMonthly,
+    totals: yearMonthly.find((row) => row.month === period.month) ?? null,
+    selectedKey: period.month,
+    label: periodLabel(period),
+  }
+}

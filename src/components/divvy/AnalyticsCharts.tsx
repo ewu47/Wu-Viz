@@ -35,11 +35,9 @@ import { MONTH_LABELS } from '@/lib/analytics-period'
 import { cn } from '@/lib/utils'
 import type {
   MemberSummary,
-  MonthlyStat,
   RouteStat,
   StationStat,
   WeekdayHourStat,
-  YearlyStat,
 } from '@/services/api'
 
 const countFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
@@ -144,6 +142,10 @@ export function CampusPulseChart({
     return axisCount(value)
   }
 
+  const milesUnavailable = metric === 'estimated_miles_total'
+    && data.length > 0
+    && data.every((row) => row.estimated_miles_total == null)
+
   return (
     <div>
       {onMetricChange ? (
@@ -155,9 +157,10 @@ export function CampusPulseChart({
           </TabsList>
         </Tabs>
       ) : null}
+      <div className={cn('relative', onMetricChange && 'mt-5')}>
       <ChartContainer
         config={pulseConfigs[metric]}
-        className={cn('h-[420px] w-full min-w-0', onMetricChange && 'mt-5')}
+        className="h-[420px] w-full min-w-0"
       >
         <AreaChart
           accessibilityLayer
@@ -231,6 +234,7 @@ export function CampusPulseChart({
                 formatter={(value) => {
                   if (metric === 'member_share') return `${Number(value).toFixed(1)}%`
                   if (metric === 'estimated_miles_total') {
+                    if (value == null || Number.isNaN(Number(value))) return 'No miles'
                     return `${Number(value).toLocaleString()} est. mi`
                   }
                   if (metric === 'total_duration_hours') {
@@ -270,6 +274,14 @@ export function CampusPulseChart({
           ) : null}
         </AreaChart>
       </ChartContainer>
+      {milesUnavailable ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8">
+          <p className="max-w-sm text-center text-sm leading-6 text-muted-foreground">
+            No miles for this view. Divvy did not publish trip coordinates until 2020, so distance cannot be estimated.
+          </p>
+        </div>
+      ) : null}
+      </div>
       {showAcademicCalendar && terms.length > 0 ? (
         <div className="mt-3">
           <AcademicLegend />
@@ -400,7 +412,13 @@ export function StationRankingChart({ allDay, afterDark, mode }: StationRankingC
   )
 }
 
-export function RoutesChart({ data }: { data: RouteStat[] }) {
+export function RoutesChart({
+  data,
+  onHoverPair,
+}: {
+  data: RouteStat[]
+  onHoverPair?: (pair: { start_station: string; end_station: string } | null) => void
+}) {
   const rows = data.slice(0, 10).map((row) => ({
     ...row,
     route: `${row.start_station} → ${row.end_station}`,
@@ -413,6 +431,13 @@ export function RoutesChart({ data }: { data: RouteStat[] }) {
         data={rows}
         layout="vertical"
         margin={{ top: 6, right: 18, left: 8, bottom: 6 }}
+        onMouseMove={(state) => {
+          const row = state?.activePayload?.[0]?.payload as RouteStat | undefined
+          if (row?.start_station && row?.end_station) {
+            onHoverPair?.({ start_station: row.start_station, end_station: row.end_station })
+          }
+        }}
+        onMouseLeave={() => onHoverPair?.(null)}
       >
         <CartesianGrid horizontal={false} />
         <XAxis type="number" hide />
@@ -429,55 +454,65 @@ export function RoutesChart({ data }: { data: RouteStat[] }) {
           cursor={{ fill: 'var(--muted)', opacity: 0.55 }}
           content={<ChartTooltipContent labelFormatter={(_, payload) => payload[0]?.payload.route} />}
         />
-        <Bar dataKey="trips" animationDuration={750} fill="var(--color-trips)" radius={[0, 5, 5, 0]} maxBarSize={22} />
+        <Bar dataKey="trips" animationDuration={750} fill="var(--color-trips)" radius={[0, 5, 5, 0]} maxBarSize={22} cursor="pointer" />
       </BarChart>
     </ChartContainer>
   )
 }
 
 const riderConfig = {
-  memberShare: { label: 'Members', color: 'var(--chart-1)' },
-  casualShare: { label: 'Casual riders', color: 'var(--chart-2)' },
+  member: { label: 'Members', color: 'var(--chart-1)' },
+  casual: { label: 'Casual riders', color: 'var(--chart-2)' },
+  member_share: { label: 'Member share', color: 'var(--chart-3)' },
 } satisfies ChartConfig
 
 export function RiderMixChart({
   data,
-  mode = 'yearly',
+  selectedKey,
 }: {
-  data: YearlyStat[] | MonthlyStat[]
-  mode?: 'yearly' | 'monthly'
+  data: Array<{ label: string; member: number; casual: number; member_share: number }>
+  selectedKey?: string | null
 }) {
-  const rows = data.map((row) => {
-    const label = 'year' in row ? String(row.year) : row.month.slice(5)
-    return {
-      label,
-      memberShare: Number((row.member / row.trips * 100).toFixed(1)),
-      casualShare: Number((row.casual / row.trips * 100).toFixed(1)),
-    }
-  })
+  if (data.length === 0) {
+    return (
+      <p className="flex h-[320px] items-center text-sm text-muted-foreground">
+        Member and casual mix for this view starts in 2020.
+      </p>
+    )
+  }
 
   return (
     <ChartContainer config={riderConfig} className="h-[320px] w-full min-w-0">
-      <LineChart accessibilityLayer data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
         <CartesianGrid vertical={false} />
-        <XAxis
-          dataKey="label"
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(value: string) => mode === 'monthly' ? value : value}
-        />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+        <YAxis yAxisId="trips" tickLine={false} axisLine={false} tickFormatter={axisCount} width={48} />
         <YAxis
+          yAxisId="share"
+          orientation="right"
           domain={[0, 100]}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value) => `${value}%`}
           width={42}
         />
-        <ChartTooltip content={<ChartTooltipContent formatter={(value) => `${value}%`} />} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={(value, name) => name === 'member_share'
+                ? `${Number(value).toFixed(1)}%`
+                : Number(value).toLocaleString()}
+            />
+          }
+        />
         <Legend />
-        <Line type="monotone" dataKey="memberShare" animationDuration={750} stroke="var(--color-memberShare)" strokeWidth={2.5} dot={false} />
-        <Line type="monotone" dataKey="casualShare" animationDuration={750} stroke="var(--color-casualShare)" strokeWidth={2.5} dot={false} />
-      </LineChart>
+        <Bar yAxisId="trips" dataKey="member" animationDuration={750} stackId="riders" fill="var(--color-member)" radius={[0, 0, 4, 4]} />
+        <Bar yAxisId="trips" dataKey="casual" animationDuration={750} stackId="riders" fill="var(--color-casual)" radius={[4, 4, 0, 0]} />
+        <Line yAxisId="share" type="monotone" dataKey="member_share" animationDuration={750} stroke="var(--color-member_share)" strokeWidth={2} dot={false} />
+        {selectedKey ? (
+          <ReferenceLine yAxisId="trips" x={selectedKey} stroke="var(--chart-3)" strokeDasharray="4 4" />
+        ) : null}
+      </ComposedChart>
     </ChartContainer>
   )
 }
@@ -485,23 +520,17 @@ export function RiderMixChart({
 const bikeConfig = {
   classic: { label: 'Classic bikes', color: 'var(--chart-1)' },
   electric: { label: 'Electric bikes', color: 'var(--chart-2)' },
+  electric_share: { label: 'Electric share', color: 'var(--chart-3)' },
 } satisfies ChartConfig
 
 export function BikeEvolutionChart({
   data,
+  selectedKey,
 }: {
-  data: YearlyStat[] | MonthlyStat[]
-  mode?: 'yearly' | 'monthly'
+  data: Array<{ label: string; classic: number; electric: number; electric_share: number | null }>
+  selectedKey?: string | null
 }) {
-  const rows = data
-    .filter((row) => ('year' in row ? row.year >= 2020 : row.month >= '2020-01'))
-    .map((row) => ({
-      label: 'year' in row ? String(row.year) : row.month.slice(5),
-      classic: row.classic,
-      electric: row.electric,
-    }))
-
-  if (rows.length === 0) {
+  if (data.length === 0) {
     return (
       <p className="flex h-[320px] items-center text-sm text-muted-foreground">
         Bike type was not published for this period.
@@ -511,14 +540,102 @@ export function BikeEvolutionChart({
 
   return (
     <ChartContainer config={bikeConfig} className="h-[320px] w-full min-w-0">
-      <BarChart accessibilityLayer data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} />
-        <YAxis tickLine={false} axisLine={false} tickFormatter={axisCount} width={48} />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <YAxis yAxisId="trips" tickLine={false} axisLine={false} tickFormatter={axisCount} width={48} />
+        <YAxis
+          yAxisId="share"
+          orientation="right"
+          domain={[0, 100]}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => `${value}%`}
+          width={42}
+        />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={(value, name) => name === 'electric_share'
+                ? `${Number(value).toFixed(1)}%`
+                : Number(value).toLocaleString()}
+            />
+          }
+        />
         <Legend />
-        <Bar dataKey="classic" animationDuration={750} stackId="bike" fill="var(--color-classic)" radius={[0, 0, 4, 4]} />
-        <Bar dataKey="electric" animationDuration={750} stackId="bike" fill="var(--color-electric)" radius={[4, 4, 0, 0]} />
+        <Bar yAxisId="trips" dataKey="classic" animationDuration={750} stackId="bike" fill="var(--color-classic)" radius={[0, 0, 4, 4]} />
+        <Bar yAxisId="trips" dataKey="electric" animationDuration={750} stackId="bike" fill="var(--color-electric)" radius={[4, 4, 0, 0]} />
+        <Line yAxisId="share" type="monotone" dataKey="electric_share" animationDuration={750} stroke="var(--color-electric_share)" strokeWidth={2} dot={false} />
+        {selectedKey ? (
+          <ReferenceLine yAxisId="trips" x={selectedKey} stroke="var(--chart-3)" strokeDasharray="4 4" />
+        ) : null}
+      </ComposedChart>
+    </ChartContainer>
+  )
+}
+
+const savingsConfig = {
+  estimated_savings: { label: 'Member savings vs walk-up', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const moneyCompact = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+
+export function RidershipSavingsChart({
+  data,
+  selectedKey,
+}: {
+  data: Array<{ label: string; estimated_savings: number }>
+  selectedKey?: string | null
+}) {
+  if (data.length === 0) {
+    return (
+      <p className="flex h-[320px] items-center text-sm text-muted-foreground">
+        Savings are estimated from 2020 onward, when bike type and modern fares exist.
+      </p>
+    )
+  }
+
+  return (
+    <ChartContainer config={savingsConfig} className="h-[320px] w-full min-w-0">
+      <BarChart accessibilityLayer data={data} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => moneyCompact.format(Number(value))}
+          width={52}
+        />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={(value) => Number(value).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                maximumFractionDigits: 0,
+              })}
+            />
+          }
+        />
+        <Bar
+          dataKey="estimated_savings"
+          animationDuration={750}
+          fill="var(--color-estimated_savings)"
+          radius={[6, 6, 0, 0]}
+          maxBarSize={42}
+        >
+          {data.map((row) => (
+            <Cell
+              key={row.label}
+              fill={selectedKey && row.label === selectedKey ? 'var(--chart-3)' : 'var(--color-estimated_savings)'}
+            />
+          ))}
+        </Bar>
       </BarChart>
     </ChartContainer>
   )
@@ -535,6 +652,14 @@ export function DurationByRiderChart({ data }: { data: MemberSummary[] }) {
     avg_duration_minutes: row.avg_duration_minutes,
     median_duration_minutes: row.median_duration_minutes,
   }))
+
+  if (rows.length === 0) {
+    return (
+      <p className="flex h-[280px] items-center text-sm text-muted-foreground">
+        Duration by rider type is shown from 2020 onward.
+      </p>
+    )
+  }
 
   return (
     <ChartContainer config={durationConfig} className="h-[280px] w-full min-w-0">

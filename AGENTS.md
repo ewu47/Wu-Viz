@@ -23,18 +23,20 @@ Official Divvy S3 trip-archive importer for **UChicago/Hyde Park only**. Downloa
 
 All **94/94** official archives are imported and validated. See **Status snapshot** below.
 
-### Phase B — Maps / replay / live / context (partially complete)
+### Phase B — Maps / replay / live / context (complete except routed replay)
 
 | Feature | Status |
 |---------|--------|
 | Station map (median centroids, map-quality coords only) | Done |
 | Demo-day station-to-station replay (3 curated days) | Done |
 | Live GBFS station inventory toggle | Done |
-| Period year/month filters + rich metrics | Done |
+| Period year/month/day filters + rich metrics | Done |
 | COVID + weather analysis | Done |
 | Next-archive-month forecast | Done |
+| Academic calendar overlay on pulse + Calendar section | Done — `config/uchicago-academic-calendar.json` (2025–26) |
+| OD pair hover → start/end points on the map | Done |
+| Ridership 2020+ (e-bike era) + estimated member savings | Done — `config/divvy-fares.json` |
 | OD flow arcs | Removed (user preference) |
-| Academic calendar overlay on pulse chart | **Next** — config at `config/uchicago-academic-calendar.json` |
 | Routed bike-path replay | **Deferred** — do not pick OSRM/Valhalla/Mapbox unless asked |
 
 ## Study zone
@@ -50,7 +52,7 @@ Config: [`config/uchicago-zone.json`](config/uchicago-zone.json)
 
 Modern rows use coordinates; older schemas without coordinates use the station name list / aliases in that file.
 
-**Map / miles / replay** further drop coarse 0.01° dockless GPS and out-of-zone points.
+**Map / replay** further drop coarse 0.01° dockless GPS and out-of-zone points. **Estimated miles** are haversine when all four coordinates exist (Divvy did not publish lat/lng until 2020, so 2013–2019 show “No miles”).
 
 ## Commands
 
@@ -75,12 +77,13 @@ Requires Postgres + root `.env` (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB
 
 | Path | Role |
 |------|------|
-| `scripts/divvy/*` | Discover, migrate, import, validate, status, schema adapters, zone filter, forecasts |
+| `scripts/divvy/*` | Discover, migrate, import, validate, status, schema adapters, zone filter, forecasts, fares |
 | `scripts/sql/001_divvy_ingestion.sql` | Ingestion schema / migration SQL |
 | `scripts/sql/002_divvy_analysis_ready.sql` | Analysis view + combined-quarter metadata correction |
 | `scripts/generate-analytics.js` | Batch aggregates analysis view into static frontend JSON |
 | `config/uchicago-zone.json` | Zone bounds + station names/aliases |
-| `config/uchicago-academic-calendar.json` | UChicago term/break/exam dates for overlay |
+| `config/uchicago-academic-calendar.json` | UChicago 2025–26 term/break/exam dates for overlay |
+| `config/divvy-fares.json` | 2020–present walk-up vs member fare schedule for savings |
 
 **Tables this pipeline owns:** `divvy_uchicago_trips`, `divvy_import_runs`
 
@@ -103,7 +106,7 @@ Open historical data has start/end + times only; no turn-by-turn rider GPS. Do n
 
 ## Status snapshot
 
-Checked via `npm run divvy:status` / `divvy:validate` (**2026-08-15**). Re-run for live numbers.
+Checked via `npm run divvy:status` / `divvy:validate` / `generate-data` (**2026-08-18**). Re-run for live numbers.
 
 | Metric | Value |
 |--------|--------|
@@ -122,9 +125,9 @@ All official S3 archives are downloaded and ingested. Verbose 2018-Q1 / 2019-Q2 
 
 ## What to do next
 
-1. **Preferred:** academic calendar overlay on Campus pulse using `config/uchicago-academic-calendar.json`.
-2. Incremental updates: `npm run divvy:import -- --latest`, validate, then `npm run generate-data` (score prior forecast vs new month).
-3. Prefer extending `scripts/divvy/schema-adapters.js` for new CSV layouts over one-off parse hacks.
+1. Incremental updates: `npm run divvy:import -- --latest`, validate, then `npm run generate-data` (score prior forecast vs new month).
+2. Prefer extending `scripts/divvy/schema-adapters.js` for new CSV layouts over one-off parse hacks.
+3. Optional: extend `config/uchicago-academic-calendar.json` beyond 2025–26.
 4. Routed path replay / new routing providers — only when explicitly asked.
 
 ## What not to do

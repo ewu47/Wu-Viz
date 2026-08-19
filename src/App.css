@@ -400,6 +400,23 @@
   background: var(--muted);
 }
 
+.leaflet-tooltip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: var(--shadow-sm);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip-top::before,
+.leaflet-tooltip-bottom::before {
+  display: none;
+}
+
 .recharts-brush-slide {
   fill: color-mix(in srgb, var(--primary) 8%, transparent);
 }

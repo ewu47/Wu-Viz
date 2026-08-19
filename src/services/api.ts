@@ -182,6 +182,7 @@ export interface Analytics {
   demo_days: DemoDay[]
   covid: CovidComparison
   weather: WeatherAnalysis
+  ridership?: RidershipAnalysis
   forecast: MonthForecast
   by_year: Record<string, YearAnalytics>
   map_bounds: MapBounds
@@ -262,6 +263,43 @@ export interface MonthForecast {
     }>
   }
   learning_notes: string[]
+}
+
+export interface RidershipPeriod {
+  trips: number
+  member: number
+  casual: number
+  classic: number
+  electric: number
+  duration_minutes: number
+  member_share: number
+  electric_share: number | null
+  avg_duration_minutes: number
+  walkup_cost: number
+  member_usage_cost: number
+  member_walkup_cost: number
+  estimated_savings: number
+  cta_equivalent: number
+  savings_per_member_trip: number
+}
+
+export interface RidershipYear extends RidershipPeriod {
+  year: number
+}
+
+export interface RidershipMonth extends RidershipPeriod {
+  year: number
+  month: string
+}
+
+export interface RidershipAnalysis {
+  era_start: number
+  cta_fare: number
+  note: string
+  sources: string[]
+  by_year: RidershipYear[]
+  monthly: RidershipMonth[]
+  totals: RidershipPeriod
 }
 
 export type AnalyticsPeriod =

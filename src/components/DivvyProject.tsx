@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bike, Clock3, CloudRain, Database, MapPin, Moon, Route, Sparkles } from 'lucide-react'
+import { Bike, Clock3, CloudRain, Database, MapPin, Moon, Route, Sparkles, Wallet } from 'lucide-react'
 
 import { AcademicCalendar } from '@/components/divvy/AcademicCalendar'
 import {
@@ -10,6 +10,7 @@ import {
   DurationByRiderChart,
   type PulseMetric,
   RiderMixChart,
+  RidershipSavingsChart,
   RoutesChart,
   StationRankingChart,
   WeatherCorrelationChart,
@@ -21,8 +22,8 @@ import { PeriodControls } from '@/components/divvy/PeriodControls'
 import { StationMap } from '@/components/divvy/StationMap'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { availableYears, filledDaysForMonth, selectAnalyticsSlice } from '@/lib/analytics-period'
-import { divvyApi, type Analytics, type AnalyticsPeriod, type WeekdayHourStat } from '@/services/api'
+import { availableYears, filledDaysForMonth, MONTH_LABELS, selectAnalyticsSlice, selectRidershipSlice } from '@/lib/analytics-period'
+import { divvyApi, type Analytics, type AnalyticsPeriod, type MemberSummary, type WeekdayHourStat } from '@/services/api'
 
 const mapZoneImage = `${import.meta.env.BASE_URL}map-zone.png`
 
@@ -42,9 +43,64 @@ function formatDay(value: string) {
   })
 }
 
+function periodKey(period: AnalyticsPeriod) {
+  if (period.mode === 'all') return 'all'
+  if (period.mode === 'year') return String(period.year)
+  if (period.mode === 'month') return period.month
+  return period.date
+}
+
 function formatMiles(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return '—'
   return value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+
+function formatUsd(value: number) {
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+}
+
+function memberSummaryForEra(analytics: Analytics, eraStart: number): MemberSummary[] {
+  const combined = new Map<MemberSummary['type'], {
+    trips: number
+    durationWeight: number
+    medianWeight: number
+    hours: number
+    miles: number
+    milesTrips: number
+  }>()
+
+  for (const [year, yearSlice] of Object.entries(analytics.by_year)) {
+    if (Number(year) < eraStart) continue
+    for (const row of yearSlice.member_summary) {
+      const current = combined.get(row.type) ?? {
+        trips: 0,
+        durationWeight: 0,
+        medianWeight: 0,
+        hours: 0,
+        miles: 0,
+        milesTrips: 0,
+      }
+      current.trips += row.trips
+      current.durationWeight += row.avg_duration_minutes * row.trips
+      current.medianWeight += row.median_duration_minutes * row.trips
+      current.hours += row.total_duration_hours
+      if (row.estimated_miles_total != null) {
+        current.miles += row.estimated_miles_total
+        current.milesTrips += row.trips
+      }
+      combined.set(row.type, current)
+    }
+  }
+
+  return [...combined.entries()].map(([type, row]) => ({
+    type,
+    trips: row.trips,
+    avg_duration_minutes: row.trips > 0 ? Number((row.durationWeight / row.trips).toFixed(2)) : 0,
+    median_duration_minutes: row.trips > 0 ? Number((row.medianWeight / row.trips).toFixed(2)) : 0,
+    total_duration_hours: Number(row.hours.toFixed(1)),
+    estimated_miles_total: row.milesTrips > 0 ? Number(row.miles.toFixed(1)) : null,
+    estimated_miles_avg: row.milesTrips > 0 ? Number((row.miles / row.milesTrips).toFixed(2)) : null,
+  }))
 }
 
 function Metric({
@@ -92,6 +148,11 @@ export default function DivvyProject() {
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<AnalyticsPeriod>({ mode: 'all' })
   const [pulseMetric, setPulseMetric] = useState<PulseMetric>('trips')
+  const [hoveredRoute, setHoveredRoute] = useState<{
+    start_station: string
+    end_station: string
+    periodKey: string
+  } | null>(null)
 
   useEffect(() => {
     divvyApi.getAnalytics().then((response) => {
@@ -171,12 +232,31 @@ export default function DivvyProject() {
   const periodRange = period.mode === 'day'
     ? formatDay(period.date)
     : `${formatDay(summary.first_trip)} – ${formatDay(summary.latest_trip)}`
-  const mixYear = period.mode === 'all' ? null : period.year
-  const mixData = mixYear == null
-    ? analytics.yearly
-    : analytics.by_year[String(mixYear)]?.monthly ?? slice.monthly
-  const mixMode = mixYear == null ? 'yearly' as const : 'monthly' as const
   const years = availableYears(analytics)
+  const ridershipSlice = selectRidershipSlice(analytics, period)
+  const riderChartRows = ridershipSlice.series.map((row) => {
+    const label = 'month' in row
+      ? MONTH_LABELS[Number(row.month.slice(5)) - 1] ?? row.month
+      : String(row.year)
+    return {
+      label,
+      member: row.member,
+      casual: row.casual,
+      member_share: row.member_share,
+      classic: row.classic,
+      electric: row.electric,
+      electric_share: row.electric_share,
+      estimated_savings: row.estimated_savings,
+    }
+  })
+  const riderSelectedKey = ridershipSlice.selectedKey
+    ? MONTH_LABELS[Number(ridershipSlice.selectedKey.slice(5)) - 1] ?? null
+    : null
+  const riderDuration = period.mode === 'all'
+    ? memberSummaryForEra(analytics, ridershipSlice.eraStart)
+    : period.year >= ridershipSlice.eraStart
+      ? slice.member_summary
+      : []
   const covidPre = analytics.covid.pre.summary
   const covidPost = analytics.covid.post.summary
   const wetDrop = analytics.weather.precip.dry_avg_trips > 0
@@ -303,11 +383,15 @@ export default function DivvyProject() {
             />
             <Metric
               label="Est. straight-line miles"
-              value={formatMiles(summary.estimated_miles_total)}
+              value={
+                summary.estimated_miles_total == null || summary.estimated_miles_trip_coverage === 0
+                  ? 'No miles'
+                  : formatMiles(summary.estimated_miles_total)
+              }
               detail={
-                summary.estimated_miles_trip_coverage > 0
-                  ? `Avg ${summary.estimated_miles_avg?.toFixed(2) ?? '—'} mi · ${summary.estimated_miles_trip_coverage}% of trips have coords`
-                  : 'Coords unavailable for this period'
+                summary.estimated_miles_total == null || summary.estimated_miles_trip_coverage === 0
+                  ? 'Divvy did not publish trip coordinates until 2020, so distance cannot be estimated here.'
+                  : `Avg ${summary.estimated_miles_avg?.toFixed(2) ?? '—'} mi · ${summary.estimated_miles_trip_coverage}% of trips have coords`
               }
             />
           </div>
@@ -604,19 +688,57 @@ export default function DivvyProject() {
         <SectionIntro
           eyebrow="Map"
           title="The stations that organize the neighborhood"
-          description="Watch a few high-activity days unfold station to station, or browse the historical station overview. Toggle live GBFS for current bike and dock inventory."
+          description="Hover a station pair to light up both endpoints on the map. Watch a few high-activity days unfold, or toggle live GBFS for current bike and dock inventory."
         />
-        <div className="mt-9">
-          <StationMap
-            stations={slice.stations}
-            archiveStations={analytics.stations}
-            demoDays={analytics.demo_days}
-            bounds={analytics.map_bounds}
-            periodLabel={slice.label}
-          />
-          <p className="mt-3 font-mono text-xs text-muted-foreground">
-            Replay moves between published station centroids. Off-station e-bike locks and coarse GPS are omitted.
-          </p>
+        <div className="mt-9 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] xl:items-start">
+          <div className="min-w-0 xl:sticky xl:top-[calc(var(--nav-height)+1rem)]">
+            <StationMap
+              stations={slice.stations}
+              archiveStations={analytics.stations}
+              demoDays={analytics.demo_days}
+              bounds={analytics.map_bounds}
+              periodLabel={slice.label}
+              highlightedRoute={
+                hoveredRoute?.periodKey === periodKey(period) ? hoveredRoute : null
+              }
+            />
+            <p className="mt-3 font-mono text-xs text-muted-foreground">
+              Replay moves between published station centroids. Off-station e-bike locks and coarse GPS are omitted.
+            </p>
+          </div>
+          <Card className="min-w-0">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-primary">
+                <Route className="size-4" aria-hidden="true" />
+                <span className="font-mono text-xs uppercase tracking-wider">OD pairs</span>
+              </div>
+              <CardTitle>Most common station-to-station routes</CardTitle>
+              <CardDescription>
+                Hover a pair to see the two stations on the map. Same-station loops are excluded.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RoutesChart
+                data={slice.common_routes}
+                onHoverPair={(pair) => {
+                  const key = periodKey(period)
+                  setHoveredRoute((current) => {
+                    if (pair == null) {
+                      return current?.periodKey === key ? null : current
+                    }
+                    if (
+                      current?.periodKey === key
+                      && current.start_station === pair.start_station
+                      && current.end_station === pair.end_station
+                    ) {
+                      return current
+                    }
+                    return { ...pair, periodKey: key }
+                  })
+                }}
+              />
+            </CardContent>
+          </Card>
         </div>
         <div className="mt-9 grid gap-6 xl:grid-cols-2">
           <Card>
@@ -652,81 +774,129 @@ export default function DivvyProject() {
             </CardContent>
           </Card>
         </div>
-        <Card className="mt-6">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-primary">
-              <Route className="size-4" aria-hidden="true" />
-              <span className="font-mono text-xs uppercase tracking-wider">OD pairs</span>
-            </div>
-            <CardTitle>Most common station-to-station routes</CardTitle>
-            <CardDescription>Same-station loops are excluded so movement between places stays visible.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RoutesChart data={slice.common_routes} />
-          </CardContent>
-        </Card>
       </section>
 
       <section id="riders" className="atlas-section atlas-shell">
         <SectionIntro
           eyebrow="Riders"
-          title="Membership and bikes changed with the system"
-          description="The archive spans two data eras. Bike type was not published before 2020, so the evolution chart begins where the field becomes available."
+          title="The e-bike years, and what membership was worth"
+          description="Divvy started publishing bike type in 2020, the same summer e-bikes arrived. This section stays in that era. Earlier years only tell us member versus casual, so 2013–2019 stay out of these charts."
         />
-        <div className="mt-9 grid gap-6 lg:grid-cols-2">
-          <Card>
+        {!ridershipSlice.available ? (
+          <Card className="mt-9">
             <CardHeader>
-              <CardTitle>Member and casual share</CardTitle>
+              <CardTitle>Modern ridership starts in {ridershipSlice.eraStart}</CardTitle>
               <CardDescription>
-                {period.mode === 'all' ? 'Share of analysis-ready rides by year.' : `Monthly mix inside ${period.year}.`}
+                {ridershipSlice.label} is before e-bikes and published rideable types. Switch the period to 2020 or later to see membership mix, bike evolution, and estimated savings.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <RiderMixChart data={mixData} mode={mixMode} />
-            </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Classic and electric bikes</CardTitle>
-              <CardDescription>
-                {period.mode === 'all'
-                  ? 'Published rideable types, 2020 onward.'
-                  : `Published types for ${period.year}.`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BikeEvolutionChart data={mixData} mode={mixMode} />
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Trip duration</CardTitle>
-              <CardDescription>Average and median minutes by membership type.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DurationByRiderChart data={slice.member_summary} />
-            </CardContent>
-          </Card>
-          <Card className="border-primary/20 bg-accent">
-            <CardHeader>
-              <Bike className="size-6 text-accent-foreground" aria-hidden="true" />
-              <CardTitle>{slice.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="font-mono text-4xl font-medium text-accent-foreground">
-                {findings.electricShare > 0 ? `${findings.electricShare.toFixed(0)}%` : '—'}
+        ) : (
+          <>
+            <div className="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="border-t border-border pt-4 sm:col-span-2">
+                <div className="atlas-metric-value font-mono text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+                  {formatUsd(ridershipSlice.totals?.estimated_savings ?? 0)}
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Wallet className="size-4 text-primary" aria-hidden="true" />
+                  Estimated member savings vs walk-up fares
+                </div>
+                <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {ridershipSlice.label}
+                  {ridershipSlice.totals
+                    ? ` · ${formatUsd(ridershipSlice.totals.savings_per_member_trip)} per member trip · members would have paid ${formatUsd(ridershipSlice.totals.member_walkup_cost)} at casual rates, versus ${formatUsd(ridershipSlice.totals.member_usage_cost)} in usage fees`
+                    : null}
+                </div>
               </div>
-              <p className="mt-2 text-sm text-accent-foreground/75">
-                electric share among rides with a published bike type
-              </p>
-              <p className="mt-8 text-base leading-7 text-accent-foreground/85">
-                Members account for {findings.memberShare.toFixed(1)}% of cleaned trips in this view.
-                Station metadata is complete for {summary.station_metadata_complete_share.toFixed(0)}%
-                of trips; coordinates for {summary.coordinate_metadata_complete_share.toFixed(0)}%.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <Metric
+                label="Member share"
+                value={`${(ridershipSlice.totals?.member_share ?? 0).toFixed(1)}%`}
+                detail={`${(ridershipSlice.totals?.member ?? 0).toLocaleString()} member trips · ${(ridershipSlice.totals?.casual ?? 0).toLocaleString()} casual`}
+              />
+              <Metric
+                label="Electric share"
+                value={
+                  ridershipSlice.totals?.electric_share == null
+                    ? '—'
+                    : `${ridershipSlice.totals.electric_share.toFixed(0)}%`
+                }
+                detail={`${(ridershipSlice.totals?.electric ?? 0).toLocaleString()} e-bikes · ${(ridershipSlice.totals?.classic ?? 0).toLocaleString()} classic`}
+              />
+            </div>
+            <div className="mt-9 grid gap-6 lg:grid-cols-2">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Walk-up fares members avoided</CardTitle>
+                  <CardDescription>
+                    Each member trip is billed at that year’s published casual rate, minus the usage fee members actually pay. Annual dues are not subtracted—trip files have no unique riders.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RidershipSavingsChart data={riderChartRows} selectedKey={riderSelectedKey} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Member and casual volume</CardTitle>
+                  <CardDescription>
+                    {ridershipSlice.grain === 'year'
+                      ? 'Trips by year from 2020 on, with member share on the right axis.'
+                      : `Monthly mix inside ${period.mode === 'all' ? ridershipSlice.label : period.year}.`}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RiderMixChart data={riderChartRows} selectedKey={riderSelectedKey} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Classic and electric bikes</CardTitle>
+                  <CardDescription>
+                    E-bikes arrived in July 2020. The line is electric share among rides with a published bike type.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BikeEvolutionChart data={riderChartRows} selectedKey={riderSelectedKey} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Trip duration</CardTitle>
+                  <CardDescription>
+                    Average and median minutes by membership type{period.mode === 'all' ? ', 2020–present' : ''}.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DurationByRiderChart data={riderDuration} />
+                </CardContent>
+              </Card>
+              <Card className="border-primary/20 bg-accent">
+                <CardHeader>
+                  <Bike className="size-6 text-accent-foreground" aria-hidden="true" />
+                  <CardTitle>{ridershipSlice.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-4xl font-medium text-accent-foreground">
+                    {ridershipSlice.totals?.electric_share != null
+                      ? `${ridershipSlice.totals.electric_share.toFixed(0)}%`
+                      : '—'}
+                  </div>
+                  <p className="mt-2 text-sm text-accent-foreground/75">
+                    electric share among rides with a published bike type
+                  </p>
+                  <p className="mt-8 text-base leading-7 text-accent-foreground/85">
+                    The same campus trips would have cost about {formatUsd(ridershipSlice.totals?.cta_equivalent ?? 0)} at a ${(analytics.ridership?.cta_fare ?? 2.5).toFixed(2)} CTA fare.
+                    Members account for {(ridershipSlice.totals?.member_share ?? 0).toFixed(1)}% of cleaned trips in this view.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+            <p className="mt-4 font-mono text-xs leading-relaxed text-muted-foreground">
+              {analytics.ridership?.note}
+            </p>
+          </>
+        )}
       </section>
 
       <section id="method" className="atlas-section atlas-shell">
@@ -735,12 +905,12 @@ export default function DivvyProject() {
           title="A small zone, treated carefully"
           description="Every chart uses the same reproducible analysis surface. Estimated miles are crow-flies distances between published endpoints—not routed path length."
         />
-        <div className="mt-9 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="mt-9 grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="overflow-hidden rounded-2xl border border-border bg-muted">
             <img
               src={mapZoneImage}
               alt="Map showing the UChicago and Hyde Park Divvy study boundary"
-              className="h-full min-h-80 w-full object-cover"
+              className="block h-auto w-full object-contain p-3"
             />
           </div>
           <Card>
@@ -755,7 +925,8 @@ export default function DivvyProject() {
                 ['Zone', 'Both trip endpoints inside the configured Hyde Park boundary'],
                 ['Duration', '15 seconds through 24 hours'],
                 ['Time', 'Chicago local wall-clock timestamps'],
-                ['Distance', 'Haversine miles only when start and end coordinates exist'],
+                ['Distance', 'Haversine miles only when start and end coordinates exist. Divvy did not publish lat/lng until 2020.'],
+                ['Fares', 'Member savings vs published walk-up rates, 2020 onward. Annual dues omitted (no unique riders). Hyde Park e-bikes treated as included through 2021.'],
                 ['Weather', 'Open-Meteo daily temps/precip joined to trip days'],
                 ['Calendar', 'UChicago 2025–26 instruction, breaks, and exams on the pulse chart'],
                 ['Forecast', 'Next archive month: seasonal + YoY + weather climatology'],

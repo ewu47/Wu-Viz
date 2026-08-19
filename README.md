@@ -5,11 +5,11 @@ This is my page for the different stats/data visualization projects that I am cu
 ------------------
 ## UChicago / Hyde Park Divvy Mobility Atlas
 This project analyzes official Divvy bike-share trips around the University of Chicago and Hyde Park from July 2013 through July 2026:
-- Station popularity and usage patterns
-- Seasonal ridership trends
-- Member vs. casual user behavior
-- Peak usage times and routes
-- After-hours bike distribution
+- Campus pulse with year → month → day drill-down and a 2025–26 academic calendar overlay
+- Station map, demo-day replay, live GBFS, and hover-to-pair origin–destination routes
+- Weather, COVID, and after-hours patterns
+- 2020+ ridership (when e-bikes and bike type were published) with estimated member savings vs walk-up fares
+- Estimated straight-line miles only when coordinates exist (2020 onward)
 
 ### Current dataset
 - **1,245,326** normalized zone trips
@@ -98,6 +98,13 @@ npm run divvy:import -- --archive 202607-divvy-tripdata.zip --dry-run
 # Import a specific archive
 npm run divvy:import -- --archive 202607-divvy-tripdata.zip
 ```
+
+`npm run generate-data` rebuilds `public/analytics.json` from the analysis view
+(Postgres + Open-Meteo). The export includes a daily series and a 2020+
+`ridership` block with fare savings from
+[`config/divvy-fares.json`](config/divvy-fares.json). Academic calendar dates
+live in [`config/uchicago-academic-calendar.json`](config/uchicago-academic-calendar.json)
+and are applied on the client.
 
 The study area is versioned in
 [`config/uchicago-zone.json`](config/uchicago-zone.json). Modern records use

@@ -628,14 +628,10 @@ export function RidershipSavingsChart({
           fill="var(--color-estimated_savings)"
           radius={[6, 6, 0, 0]}
           maxBarSize={42}
-        >
-          {data.map((row) => (
-            <Cell
-              key={row.label}
-              fill={selectedKey && row.label === selectedKey ? 'var(--chart-3)' : 'var(--color-estimated_savings)'}
-            />
-          ))}
-        </Bar>
+        />
+        {selectedKey ? (
+          <ReferenceLine x={selectedKey} stroke="var(--chart-3)" strokeDasharray="4 4" />
+        ) : null}
       </BarChart>
     </ChartContainer>
   )

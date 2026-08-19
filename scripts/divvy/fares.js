@@ -7,7 +7,6 @@ const fareConfig = JSON.parse(
   fs.readFileSync(path.resolve(directory, '../../config/divvy-fares.json'), 'utf8'),
 );
 
-export const DIVVY_FARES = fareConfig;
 export const RIDERSHIP_ERA_START = fareConfig.era_start;
 
 export function billedMinutes(durationSeconds) {
@@ -61,7 +60,7 @@ export function memberSavings(year, bike, durationSeconds) {
   return roundCents(Math.max(0, walkup - usage));
 }
 
-export function minutesSql(column = 'duration_seconds') {
+function minutesSql(column = 'duration_seconds') {
   return `GREATEST(1::numeric, CEIL(${column} / 60.0))`;
 }
 
@@ -219,7 +218,6 @@ export function buildRidershipRollup(rows, { ctaFare = fareConfig.cta_fare } = {
     era_start: fareConfig.era_start,
     cta_fare: ctaFare,
     note: fareConfig.note,
-    sources: fareConfig.sources,
     by_year,
     monthly,
     totals,

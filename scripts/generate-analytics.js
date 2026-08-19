@@ -875,25 +875,36 @@ async function generateAnalytics() {
       `, [COVID_POST_START]),
       pool.query(periodSeriesSelect(`to_char(trip_date, 'YYYY-MM-DD')`, 'date')),
       pool.query(`
+        WITH priced AS (
+          SELECT
+            trip_year AS year,
+            to_char(trip_date, 'YYYY-MM') AS month,
+            member_casual AS rider,
+            coalesce(rideable_type, 'not_published') AS bike,
+            duration_seconds,
+            ${walkupFareSql()} AS walkup_cost,
+            ${memberUsageFareSql()} AS member_usage_cost
+          FROM divvy_uchicago_trips_analysis
+          WHERE trip_year >= ${RIDERSHIP_ERA_START}
+        )
         SELECT
-          trip_year AS year,
-          to_char(trip_date, 'YYYY-MM') AS month,
-          member_casual AS rider,
-          coalesce(rideable_type, 'not_published') AS bike,
+          year,
+          month,
+          rider,
+          bike,
           count(*)::bigint AS trips,
           round(sum(duration_seconds)::numeric / 60, 1) AS duration_minutes,
-          round(sum(${walkupFareSql()})::numeric, 2) AS walkup_cost,
-          round(sum(${memberUsageFareSql()})::numeric, 2) AS member_usage_cost,
+          round(sum(walkup_cost)::numeric, 2) AS walkup_cost,
+          round(sum(member_usage_cost)::numeric, 2) AS member_usage_cost,
           round(sum(
             CASE
-              WHEN member_casual = 'member'
-              THEN coalesce(${walkupFareSql()}, 0) - ${memberUsageFareSql()}
+              WHEN rider = 'member'
+              THEN coalesce(walkup_cost, 0) - member_usage_cost
               ELSE 0
             END
           )::numeric, 2) AS estimated_savings
-        FROM divvy_uchicago_trips_analysis
-        WHERE trip_year >= ${RIDERSHIP_ERA_START}
-        GROUP BY trip_year, to_char(trip_date, 'YYYY-MM'), member_casual, coalesce(rideable_type, 'not_published')
+        FROM priced
+        GROUP BY year, month, rider, bike
         ORDER BY year, month, rider, bike
       `),
     ]);

@@ -149,6 +149,36 @@ function findStationPoint(name: string, lists: StationMapPoint[][]) {
 const START_COLOR = '#800000'
 const END_COLOR = '#366d75'
 
+function PairMarker({
+  station,
+  role,
+}: {
+  station: StationMapPoint
+  role: 'start' | 'end'
+}) {
+  const color = role === 'start' ? START_COLOR : END_COLOR
+  return (
+    <CircleMarker
+      center={[station.lat, station.lng]}
+      radius={13}
+      pathOptions={{
+        color,
+        fillColor: color,
+        fillOpacity: 0.88,
+        weight: 3,
+      }}
+    >
+      <MapTooltip
+        permanent
+        direction={role === 'start' ? 'top' : 'bottom'}
+        offset={role === 'start' ? [0, -12] : [0, 12]}
+      >
+        {role === 'start' ? 'Start' : 'End'} · {station.station}
+      </MapTooltip>
+    </CircleMarker>
+  )
+}
+
 export function StationMap({
   stations,
   archiveStations,
@@ -257,6 +287,8 @@ export function StationMap({
       return [row]
     })
   }, [selectedDay, archiveStations])
+
+  const mappedStations = selectedDay ? dayStations : overviewStations
 
   const activeRides = useMemo(
     () => (selectedDay ? activeRidePositions(selectedDay.trips, clockMinute) : []),
@@ -387,55 +419,42 @@ export function StationMap({
             />
             <FitBounds bounds={bounds} />
 
-            {(selectedDay ? dayStations : overviewStations).map((station) => {
-              const isStart = pairStart != null && station.station === pairStart.station
-              const isEnd = pairEnd != null && station.station === pairEnd.station
-              const isPairStation = isStart || isEnd
+            {mappedStations.map((station) => {
+              const isPairStation = pairStart?.station === station.station || pairEnd?.station === station.station
               const dimmed = highlightedRoute != null && !isPairStation
-              const color = isEnd ? END_COLOR : START_COLOR
 
               return (
                 <CircleMarker
                   key={station.station}
                   center={[station.lat, station.lng]}
-                  radius={isPairStation ? 13 : selectedDay ? 6 : markerRadius(station.mapped_trips, maxTrips)}
+                  radius={selectedDay ? 6 : markerRadius(station.mapped_trips, maxTrips)}
                   pathOptions={{
-                    color,
-                    fillColor: color,
-                    fillOpacity: dimmed ? 0.08 : isPairStation ? 0.88 : selectedDay ? 0.22 : 0.38,
-                    weight: isPairStation ? 3 : 1.5,
-                    opacity: dimmed ? 0.16 : isPairStation ? 1 : selectedDay ? 0.55 : 0.9,
+                    color: START_COLOR,
+                    fillColor: START_COLOR,
+                    fillOpacity: dimmed ? 0.08 : selectedDay ? 0.22 : 0.38,
+                    weight: 1.5,
+                    opacity: dimmed ? 0.16 : selectedDay ? 0.55 : 0.9,
                   }}
                 >
-                  {isStart ? (
-                    <MapTooltip permanent direction="top" offset={[0, -12]}>
-                      Start · {station.station}
-                    </MapTooltip>
-                  ) : isEnd ? (
-                    <MapTooltip permanent direction="bottom" offset={[0, 12]}>
-                      End · {station.station}
-                    </MapTooltip>
-                  ) : (
-                    <Popup>
-                      <div className="min-w-40 font-sans text-sm">
-                        <div className="font-semibold text-foreground">{station.station}</div>
-                        {!selectedDay ? (
-                          <>
-                            <div className="mt-2 font-mono text-xs text-muted-foreground">
-                              {station.mapped_trips.toLocaleString()} mapped trips
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {station.mapped_starts.toLocaleString()} starts · {station.mapped_ends.toLocaleString()} ends
-                            </div>
-                          </>
-                        ) : (
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Active on this demo day
+                  <Popup>
+                    <div className="min-w-40 font-sans text-sm">
+                      <div className="font-semibold text-foreground">{station.station}</div>
+                      {!selectedDay ? (
+                        <>
+                          <div className="mt-2 font-mono text-xs text-muted-foreground">
+                            {station.mapped_trips.toLocaleString()} mapped trips
                           </div>
-                        )}
-                      </div>
-                    </Popup>
-                  )}
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {station.mapped_starts.toLocaleString()} starts · {station.mapped_ends.toLocaleString()} ends
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Active on this demo day
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
                 </CircleMarker>
               )
             })}
@@ -454,40 +473,8 @@ export function StationMap({
                     opacity: 0.95,
                   }}
                 />
-                {!(selectedDay ? dayStations : overviewStations).some((row) => row.station === pairStart.station) ? (
-                  <CircleMarker
-                    key={`pair-start-${pairStart.station}`}
-                    center={[pairStart.lat, pairStart.lng]}
-                    radius={13}
-                    pathOptions={{
-                      color: START_COLOR,
-                      fillColor: START_COLOR,
-                      fillOpacity: 0.88,
-                      weight: 3,
-                    }}
-                  >
-                    <MapTooltip permanent direction="top" offset={[0, -12]}>
-                      Start · {pairStart.station}
-                    </MapTooltip>
-                  </CircleMarker>
-                ) : null}
-                {!(selectedDay ? dayStations : overviewStations).some((row) => row.station === pairEnd.station) ? (
-                  <CircleMarker
-                    key={`pair-end-${pairEnd.station}`}
-                    center={[pairEnd.lat, pairEnd.lng]}
-                    radius={13}
-                    pathOptions={{
-                      color: END_COLOR,
-                      fillColor: END_COLOR,
-                      fillOpacity: 0.88,
-                      weight: 3,
-                    }}
-                  >
-                    <MapTooltip permanent direction="bottom" offset={[0, 12]}>
-                      End · {pairEnd.station}
-                    </MapTooltip>
-                  </CircleMarker>
-                ) : null}
+                <PairMarker station={pairStart} role="start" />
+                <PairMarker station={pairEnd} role="end" />
               </>
             ) : null}
 

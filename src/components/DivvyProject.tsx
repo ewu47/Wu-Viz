@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bike, Clock3, CloudRain, Database, MapPin, Moon, Route, Sparkles, Wallet } from 'lucide-react'
+import { Clock3, CloudRain, Database, MapPin, Moon, Route, Sparkles, Wallet } from 'lucide-react'
 
 import { AcademicCalendar } from '@/components/divvy/AcademicCalendar'
 import {
@@ -65,8 +65,6 @@ function memberSummaryForEra(analytics: Analytics, eraStart: number): MemberSumm
     durationWeight: number
     medianWeight: number
     hours: number
-    miles: number
-    milesTrips: number
   }>()
 
   for (const [year, yearSlice] of Object.entries(analytics.by_year)) {
@@ -77,17 +75,11 @@ function memberSummaryForEra(analytics: Analytics, eraStart: number): MemberSumm
         durationWeight: 0,
         medianWeight: 0,
         hours: 0,
-        miles: 0,
-        milesTrips: 0,
       }
       current.trips += row.trips
       current.durationWeight += row.avg_duration_minutes * row.trips
       current.medianWeight += row.median_duration_minutes * row.trips
       current.hours += row.total_duration_hours
-      if (row.estimated_miles_total != null) {
-        current.miles += row.estimated_miles_total
-        current.milesTrips += row.trips
-      }
       combined.set(row.type, current)
     }
   }
@@ -98,8 +90,8 @@ function memberSummaryForEra(analytics: Analytics, eraStart: number): MemberSumm
     avg_duration_minutes: row.trips > 0 ? Number((row.durationWeight / row.trips).toFixed(2)) : 0,
     median_duration_minutes: row.trips > 0 ? Number((row.medianWeight / row.trips).toFixed(2)) : 0,
     total_duration_hours: Number(row.hours.toFixed(1)),
-    estimated_miles_total: row.milesTrips > 0 ? Number(row.miles.toFixed(1)) : null,
-    estimated_miles_avg: row.milesTrips > 0 ? Number((row.miles / row.milesTrips).toFixed(2)) : null,
+    estimated_miles_total: null,
+    estimated_miles_avg: null,
   }))
 }
 
@@ -187,19 +179,11 @@ export default function DivvyProject() {
       (peak, row) => (row.trips > peak.trips ? row : peak),
       slice.monthly[0],
     )
-    const member = slice.member_summary.find((row) => row.type === 'member')
-    const typedBikes = slice.summary.classic + slice.summary.electric
-    const electricShare = typedBikes > 0
-      ? slice.summary.electric / typedBikes * 100
-      : slice.summary.electric_share_among_typed ?? 0
 
     return {
       peakMonth,
-      memberShare: slice.summary.member_share,
-      electricShare,
       topStart: slice.top_start_stations[0],
       nightEnd: slice.after_dark_end_stations[0],
-      memberHours: member?.total_duration_hours,
     }
   }, [slice])
 
@@ -233,6 +217,7 @@ export default function DivvyProject() {
     ? formatDay(period.date)
     : `${formatDay(summary.first_trip)} – ${formatDay(summary.latest_trip)}`
   const years = availableYears(analytics)
+  const currentPeriodKey = periodKey(period)
   const ridershipSlice = selectRidershipSlice(analytics, period)
   const riderChartRows = ridershipSlice.series.map((row) => {
     const label = 'month' in row
@@ -699,7 +684,7 @@ export default function DivvyProject() {
               bounds={analytics.map_bounds}
               periodLabel={slice.label}
               highlightedRoute={
-                hoveredRoute?.periodKey === periodKey(period) ? hoveredRoute : null
+                hoveredRoute?.periodKey === currentPeriodKey ? hoveredRoute : null
               }
             />
             <p className="mt-3 font-mono text-xs text-muted-foreground">
@@ -721,19 +706,18 @@ export default function DivvyProject() {
               <RoutesChart
                 data={slice.common_routes}
                 onHoverPair={(pair) => {
-                  const key = periodKey(period)
                   setHoveredRoute((current) => {
                     if (pair == null) {
-                      return current?.periodKey === key ? null : current
+                      return current?.periodKey === currentPeriodKey ? null : current
                     }
                     if (
-                      current?.periodKey === key
+                      current?.periodKey === currentPeriodKey
                       && current.start_station === pair.start_station
                       && current.end_station === pair.end_station
                     ) {
                       return current
                     }
-                    return { ...pair, periodKey: key }
+                    return { ...pair, periodKey: currentPeriodKey }
                   })
                 }}
               />
@@ -871,28 +855,11 @@ export default function DivvyProject() {
                   <DurationByRiderChart data={riderDuration} />
                 </CardContent>
               </Card>
-              <Card className="border-primary/20 bg-accent">
-                <CardHeader>
-                  <Bike className="size-6 text-accent-foreground" aria-hidden="true" />
-                  <CardTitle>{ridershipSlice.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-4xl font-medium text-accent-foreground">
-                    {ridershipSlice.totals?.electric_share != null
-                      ? `${ridershipSlice.totals.electric_share.toFixed(0)}%`
-                      : '—'}
-                  </div>
-                  <p className="mt-2 text-sm text-accent-foreground/75">
-                    electric share among rides with a published bike type
-                  </p>
-                  <p className="mt-8 text-base leading-7 text-accent-foreground/85">
-                    The same campus trips would have cost about {formatUsd(ridershipSlice.totals?.cta_equivalent ?? 0)} at a ${(analytics.ridership?.cta_fare ?? 2.5).toFixed(2)} CTA fare.
-                    Members account for {(ridershipSlice.totals?.member_share ?? 0).toFixed(1)}% of cleaned trips in this view.
-                  </p>
-                </CardContent>
-              </Card>
             </div>
             <p className="mt-4 font-mono text-xs leading-relaxed text-muted-foreground">
+              {ridershipSlice.totals
+                ? `Same trips at a $${(analytics.ridership?.cta_fare ?? 2.5).toFixed(2)} CTA fare: ${formatUsd(ridershipSlice.totals.cta_equivalent)}. `
+                : null}
               {analytics.ridership?.note}
             </p>
           </>

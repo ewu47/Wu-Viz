@@ -296,7 +296,7 @@ export interface RidershipAnalysis {
   era_start: number
   cta_fare: number
   note: string
-  sources: string[]
+  sources?: string[]
   by_year: RidershipYear[]
   monthly: RidershipMonth[]
   totals: RidershipPeriod

@@ -144793,18 +144793,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "Woodlawn Ave & 55th St",
-            "end_station": "Blackstone Ave & 59th St",
-            "start_lat": 41.795264,
-            "start_lng": -87.596471,
-            "end_lat": 41.787877,
-            "end_lng": -87.590461,
-            "start_minute": 945.48,
-            "duration_seconds": 410,
-            "member_casual": "member",
-            "rideable_type": "classic_bike"
-          },
-          {
             "start_station": "University Ave & 59th St",
             "end_station": "University Ave & 57th St",
             "start_lat": 41.787878,
@@ -144814,6 +144802,18 @@
             "start_minute": 945.48,
             "duration_seconds": 2613,
             "member_casual": "casual",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Woodlawn Ave & 55th St",
+            "end_station": "Blackstone Ave & 59th St",
+            "start_lat": 41.795264,
+            "start_lng": -87.596471,
+            "end_lat": 41.787877,
+            "end_lng": -87.590461,
+            "start_minute": 945.48,
+            "duration_seconds": 410,
+            "member_casual": "member",
             "rideable_type": "classic_bike"
           },
           {
@@ -145741,18 +145741,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "University Ave & 57th St",
-            "end_station": "Ellis Ave & 53rd St",
-            "start_lat": 41.791478,
-            "start_lng": -87.599861,
-            "end_lat": 41.799336,
-            "end_lng": -87.600958,
-            "start_minute": 1014.95,
-            "duration_seconds": 238,
-            "member_casual": "member",
-            "rideable_type": "classic_bike"
-          },
-          {
             "start_station": "Ellis Ave & 60th St",
             "end_station": "Ellis Ave & 55th St",
             "start_lat": 41.785097,
@@ -145762,6 +145750,18 @@
             "start_minute": 1014.95,
             "duration_seconds": 281,
             "member_casual": "casual",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "University Ave & 57th St",
+            "end_station": "Ellis Ave & 53rd St",
+            "start_lat": 41.791478,
+            "start_lng": -87.599861,
+            "end_lat": 41.799336,
+            "end_lng": -87.600958,
+            "start_minute": 1014.95,
+            "duration_seconds": 238,
+            "member_casual": "member",
             "rideable_type": "classic_bike"
           },
           {
@@ -152494,18 +152494,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "Ellis Ave & 60th St",
-            "end_station": "Ellis Ave & 58th St",
-            "start_lat": 41.785097,
-            "start_lng": -87.601073,
-            "end_lat": 41.788746,
-            "end_lng": -87.601334,
-            "start_minute": 806.48,
-            "duration_seconds": 110,
-            "member_casual": "member",
-            "rideable_type": "classic_bike"
-          },
-          {
             "start_station": "University Ave & 57th St",
             "end_station": "Ellis Ave & 58th St",
             "start_lat": 41.791478,
@@ -152514,6 +152502,18 @@
             "end_lng": -87.601334,
             "start_minute": 806.48,
             "duration_seconds": 107,
+            "member_casual": "member",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Ellis Ave & 60th St",
+            "end_station": "Ellis Ave & 58th St",
+            "start_lat": 41.785097,
+            "start_lng": -87.601073,
+            "end_lat": 41.788746,
+            "end_lng": -87.601334,
+            "start_minute": 806.48,
+            "duration_seconds": 110,
             "member_casual": "member",
             "rideable_type": "classic_bike"
           },
@@ -154942,18 +154942,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "Ellis Ave & 60th St",
-            "end_station": "Ellis Ave & 55th St",
-            "start_lat": 41.785097,
-            "start_lng": -87.601073,
-            "end_lat": 41.794301,
-            "end_lng": -87.60145,
-            "start_minute": 988.35,
-            "duration_seconds": 252,
-            "member_casual": "casual",
-            "rideable_type": "classic_bike"
-          },
-          {
             "start_station": "Woodlawn Ave & 55th St",
             "end_station": "Lake Park Ave & 56th St",
             "start_lat": 41.795264,
@@ -154963,6 +154951,18 @@
             "start_minute": 988.35,
             "duration_seconds": 1202,
             "member_casual": "member",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Ellis Ave & 60th St",
+            "end_station": "Ellis Ave & 55th St",
+            "start_lat": 41.785097,
+            "start_lng": -87.601073,
+            "end_lat": 41.794301,
+            "end_lng": -87.60145,
+            "start_minute": 988.35,
+            "duration_seconds": 252,
+            "member_casual": "casual",
             "rideable_type": "classic_bike"
           },
           {
@@ -156599,18 +156599,6 @@
           },
           {
             "start_station": "Shore Dr & 55th St",
-            "end_station": "Kimbark Ave & 53rd St",
-            "start_lat": 41.795212,
-            "start_lng": -87.580715,
-            "end_lat": 41.799568,
-            "end_lng": -87.594747,
-            "start_minute": 1122.57,
-            "duration_seconds": 4391,
-            "member_casual": "casual",
-            "rideable_type": "classic_bike"
-          },
-          {
-            "start_station": "Shore Dr & 55th St",
             "end_station": "Woodlawn Ave & 55th St",
             "start_lat": 41.795212,
             "start_lng": -87.580715,
@@ -156618,6 +156606,18 @@
             "end_lng": -87.596471,
             "start_minute": 1122.57,
             "duration_seconds": 652,
+            "member_casual": "casual",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Shore Dr & 55th St",
+            "end_station": "Kimbark Ave & 53rd St",
+            "start_lat": 41.795212,
+            "start_lng": -87.580715,
+            "end_lat": 41.799568,
+            "end_lng": -87.594747,
+            "start_minute": 1122.57,
+            "duration_seconds": 4391,
             "member_casual": "casual",
             "rideable_type": "classic_bike"
           },
@@ -172847,14 +172847,6 @@
       "era_start": 2020,
       "cta_fare": 2.5,
       "note": "Hyde Park / UChicago walk-up vs member usage fees. Annual dues are not subtracted because trip files have no unique riders. 2020–2021 member e-bikes are treated as included for 45 minutes: Hyde Park sat in Divvy’s original fee-waiver zone south of Pershing until May 2022.",
-      "sources": [
-        "https://chi.streetsblog.org/2020/07/27/e-divvy-bikes-debut-wednesday-equitable-but-complex-pricing-system-announced",
-        "https://chi.streetsblog.org/2020/12/01/sorry-folks-divvy-memberships-and-single-rides-are-about-to-get-a-little-more-expensive",
-        "https://chi.streetsblog.org/2022/06/14/divvys-new-pricing-is-unaffordable-to-many-residents-and-therefore-inequitable",
-        "https://chi.streetsblog.org/2023/03/29/sad-trombone-another-divvy-price-hike-quietly-kicked-in-this-month",
-        "https://blockclubchicago.org/2024/01/08/divvy-fares-are-going-up-in-february/",
-        "https://divvybikes.com/pricing"
-      ],
       "by_year": [
         {
           "year": 2020,
@@ -201719,6 +201711,6 @@
       "minLng": -87.60641021421114,
       "maxLng": -87.57517423508772
     },
-    "generated_at": "2026-08-18T16:12:16.526Z"
+    "generated_at": "2026-09-21T01:04:50.709Z"
   }
 }

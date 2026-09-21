@@ -1,6 +1,6 @@
 # Wu-Viz
 
-This is my page for the different stats/data visualization projects that I am curious to do!
+This is my page for any visualizations on data that I want to explore.
 
 ------------------
 ## UChicago / Hyde Park Divvy Mobility Atlas

@@ -144793,18 +144793,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "University Ave & 59th St",
-            "end_station": "University Ave & 57th St",
-            "start_lat": 41.787878,
-            "start_lng": -87.598906,
-            "end_lat": 41.791478,
-            "end_lng": -87.599861,
-            "start_minute": 945.48,
-            "duration_seconds": 2613,
-            "member_casual": "casual",
-            "rideable_type": "classic_bike"
-          },
-          {
             "start_station": "Woodlawn Ave & 55th St",
             "end_station": "Blackstone Ave & 59th St",
             "start_lat": 41.795264,
@@ -144814,6 +144802,18 @@
             "start_minute": 945.48,
             "duration_seconds": 410,
             "member_casual": "member",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "University Ave & 59th St",
+            "end_station": "University Ave & 57th St",
+            "start_lat": 41.787878,
+            "start_lng": -87.598906,
+            "end_lat": 41.791478,
+            "end_lng": -87.599861,
+            "start_minute": 945.48,
+            "duration_seconds": 2613,
+            "member_casual": "casual",
             "rideable_type": "classic_bike"
           },
           {
@@ -146281,18 +146281,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "Ellis Ave & 60th St",
-            "end_station": "Ellis Ave & 55th St",
-            "start_lat": 41.785097,
-            "start_lng": -87.601073,
-            "end_lat": 41.794301,
-            "end_lng": -87.60145,
-            "start_minute": 1040.52,
-            "duration_seconds": 204,
-            "member_casual": "member",
-            "rideable_type": "electric_bike"
-          },
-          {
             "start_station": "Ellis Ave & 55th St",
             "end_station": "Woodlawn Ave & 58th St",
             "start_lat": 41.794301,
@@ -146303,6 +146291,18 @@
             "duration_seconds": 282,
             "member_casual": "member",
             "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Ellis Ave & 60th St",
+            "end_station": "Ellis Ave & 55th St",
+            "start_lat": 41.785097,
+            "start_lng": -87.601073,
+            "end_lat": 41.794301,
+            "end_lng": -87.60145,
+            "start_minute": 1040.52,
+            "duration_seconds": 204,
+            "member_casual": "member",
+            "rideable_type": "electric_bike"
           },
           {
             "start_station": "Museum of Science and Industry",
@@ -156442,18 +156442,6 @@
             "rideable_type": "classic_bike"
           },
           {
-            "start_station": "Harper Ave & 59th St",
-            "end_station": "Shore Dr & 55th St",
-            "start_lat": 41.787943,
-            "start_lng": -87.588315,
-            "end_lat": 41.795212,
-            "end_lng": -87.580715,
-            "start_minute": 1110.25,
-            "duration_seconds": 853,
-            "member_casual": "member",
-            "rideable_type": "classic_bike"
-          },
-          {
             "start_station": "Shore Dr & 55th St",
             "end_station": "University Ave & 57th St",
             "start_lat": 41.795212,
@@ -156463,6 +156451,18 @@
             "start_minute": 1110.25,
             "duration_seconds": 974,
             "member_casual": "casual",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Harper Ave & 59th St",
+            "end_station": "Shore Dr & 55th St",
+            "start_lat": 41.787943,
+            "start_lng": -87.588315,
+            "end_lat": 41.795212,
+            "end_lng": -87.580715,
+            "start_minute": 1110.25,
+            "duration_seconds": 853,
+            "member_casual": "member",
             "rideable_type": "classic_bike"
           },
           {
@@ -156599,18 +156599,6 @@
           },
           {
             "start_station": "Shore Dr & 55th St",
-            "end_station": "Woodlawn Ave & 55th St",
-            "start_lat": 41.795212,
-            "start_lng": -87.580715,
-            "end_lat": 41.795264,
-            "end_lng": -87.596471,
-            "start_minute": 1122.57,
-            "duration_seconds": 652,
-            "member_casual": "casual",
-            "rideable_type": "classic_bike"
-          },
-          {
-            "start_station": "Shore Dr & 55th St",
             "end_station": "Kimbark Ave & 53rd St",
             "start_lat": 41.795212,
             "start_lng": -87.580715,
@@ -156618,6 +156606,18 @@
             "end_lng": -87.594747,
             "start_minute": 1122.57,
             "duration_seconds": 4391,
+            "member_casual": "casual",
+            "rideable_type": "classic_bike"
+          },
+          {
+            "start_station": "Shore Dr & 55th St",
+            "end_station": "Woodlawn Ave & 55th St",
+            "start_lat": 41.795212,
+            "start_lng": -87.580715,
+            "end_lat": 41.795264,
+            "end_lng": -87.596471,
+            "start_minute": 1122.57,
+            "duration_seconds": 652,
             "member_casual": "casual",
             "rideable_type": "classic_bike"
           },
@@ -157769,7 +157769,7 @@
             "end_lat": 41.794301,
             "end_lng": -87.60145,
             "start_minute": 1224.45,
-            "duration_seconds": 662,
+            "duration_seconds": 672,
             "member_casual": "casual",
             "rideable_type": "classic_bike"
           },
@@ -157781,7 +157781,7 @@
             "end_lat": 41.794301,
             "end_lng": -87.60145,
             "start_minute": 1224.45,
-            "duration_seconds": 672,
+            "duration_seconds": 662,
             "member_casual": "casual",
             "rideable_type": "classic_bike"
           },
@@ -201711,6 +201711,6 @@
       "minLng": -87.60641021421114,
       "maxLng": -87.57517423508772
     },
-    "generated_at": "2026-09-21T01:04:50.709Z"
+    "generated_at": "2026-09-21T15:42:45.533Z"
   }
 }
